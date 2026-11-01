@@ -1,4 +1,5 @@
 mod glyphs;
+mod input;
 
 use std::{rc::Rc, sync::Arc};
 
@@ -6,7 +7,7 @@ use glyphs::draw;
 
 use alacritty_terminal::vte::ansi::CursorShape;
 use gpui::{
-    Bounds, ContentMask, Corners, ElementInputHandler, Entity, Font, FontId, FontStyle, FontWeight,
+    Bounds, ContentMask, Corners, Entity, Font, FontId, FontStyle, FontWeight,
     Hsla, IntoElement, PathBuilder, Pixels, Point, RenderImage, Size, StrikethroughStyle, Styled,
     TextRun, UnderlineStyle, Window, canvas, fill, outline, point, px, size,
 };
@@ -79,7 +80,11 @@ pub fn grid(
                 frame.rows.first().map(|row| row.text.trim_end())
             );
             let focus = input.read(cx).focus.clone();
-            window.handle_input(&focus, ElementInputHandler::new(bounds, input.clone()), cx);
+            window.handle_input(
+                &focus,
+                input::TerminalInput { view: input.downgrade(), bounds },
+                cx,
+            );
             let origin = snapped(bounds.origin, window);
             drop_pictures(stale, window);
             let top = |index: usize| origin + point(px(0.), cell.height * index as f32);
