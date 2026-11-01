@@ -1,8 +1,9 @@
-use ely_gpui_component::{buttons::Button, i18n::text, settings::SettingsRow, theme::ControlSize};
+use ely_gpui_component::{buttons::Button, settings::SettingsRow, theme::ControlSize};
 use gpui::{App, Entity, SharedString};
 
 use super::SettingsWindow;
 use crate::explorer::{self, CLASSES, Entry};
+use crate::i18n::text;
 
 /// What Explorer's menu opens, and a button to change it.
 pub(super) fn row(this: &Entity<SettingsWindow>, cx: &App) -> SettingsRow {

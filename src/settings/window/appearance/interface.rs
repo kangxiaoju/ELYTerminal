@@ -1,7 +1,6 @@
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant, SegmentedControl},
     forms::FontPicker,
-    i18n::text,
     settings::SettingsRow,
     theme::{ActiveTheme, ControlSize},
 };
@@ -9,6 +8,7 @@ use gpui::{Context, ParentElement, SharedString, Styled, div, prelude::FluentBui
 
 use super::super::{SettingsWindow, set};
 use crate::settings::{INTERFACE_SIZE, SettingsStore};
+use crate::i18n::text;
 
 impl SettingsWindow {
     /// The interface's family and size, as ely-mark sets them.

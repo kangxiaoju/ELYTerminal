@@ -1,10 +1,10 @@
+use crate::i18n::text;
 use std::path::PathBuf;
 
 use ely_gpui_component::{
     buttons::{Button, SegmentedControl},
     feedback::InlineMessage,
     forms::{Copy, NumberInput, Paste, PathInput, SelectAll, Switch},
-    i18n::text,
     primitives::Severity,
     settings::{KeyboardShortcutsList, SettingsRow, SettingsSection, Shortcut},
     theme::{ActiveTheme, ControlSize},

@@ -1,9 +1,9 @@
+use crate::i18n::text;
 use std::path::Path;
 
 use ely_gpui_component::{
     feedback::Alert,
     git::{ChangeSection, Changed, ChangesList, CommitInput, CommitList, DiffViewer},
-    i18n::text,
     lists::GitStatus,
     overlays::{ConfirmDialog, Dialog},
     primitives::{Icon, IconName, Severity},

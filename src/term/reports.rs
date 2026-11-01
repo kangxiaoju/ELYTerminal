@@ -9,6 +9,7 @@ use super::{
     view::{TerminalEvent, TerminalView},
 };
 use crate::{
+    i18n::words,
     sessions::{line, plain},
     workspace::TITLE,
 };
@@ -149,7 +150,7 @@ impl TerminalView {
     fn tell_state(&mut self, cx: &mut Context<Self>) {
         let body = match self.records.shown() {
             Some((id, record)) if tells(record.state) => {
-                line(&self.records, id, record, cx.global::<I18n>())
+                line(&self.records, id, record, words(cx))
             }
             _ => return,
         };
@@ -168,7 +169,7 @@ impl TerminalView {
         if let Some(start) = std::mem::take(&mut self.ran) {
             let now = Instant::now();
             if ran_long(start, now) {
-                self.post(finished(status, cx.global::<I18n>()), None, cx);
+                self.post(finished(status, words(cx)), None, cx);
             } else {
                 log::debug!(
                     "terminal {}: a command under {RAN_FOR:?} ran, so its end, {status:?}, posts nothing",

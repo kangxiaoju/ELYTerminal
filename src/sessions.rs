@@ -6,7 +6,7 @@ use std::{
 use ely_gpui_component::{
     buttons::{ButtonVariant, IconButton},
     forms::{Input, TextInput},
-    i18n::{I18n, text},
+    i18n::I18n,
     lists::ListItem,
     menus::ContextMenu,
     primitives::{Icon, IconName, Tooltip},
@@ -18,6 +18,7 @@ use gpui::{
 };
 
 use crate::{
+    i18n::{text, words},
     settings::SettingsStore,
     term::{Kind, Record, Records, State, TerminalView},
     workspace::{TITLE, Workspace},
@@ -232,7 +233,7 @@ fn mark(session: &Session, now: Instant, cx: &App) -> Option<AnyElement> {
         let lines = watched.upgrade().map_or_else(Vec::new, |terminal| {
             let view = terminal.read(cx);
             let failed = view.ended().filter(|&code| code != 0);
-            hover(view.records(), failed, cx.global::<I18n>())
+            hover(view.records(), failed, words(cx))
         });
         let room = window.viewport_size().height - rems(3.).to_pixels(window.rem_size());
         div()

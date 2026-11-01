@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant},
-    i18n::text,
     overlays::Dialog,
     theme::{ActiveTheme, TextSize},
     typography::Caption,
@@ -14,6 +13,7 @@ use gpui::{
 };
 
 use crate::{sessions::plain, term::view::TerminalView};
+use crate::i18n::text;
 
 /// The lines of text and the files a preview shows.
 const SHOWN: usize = 8;

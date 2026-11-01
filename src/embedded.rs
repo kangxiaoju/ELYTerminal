@@ -12,6 +12,8 @@ impl Global for Host {}
 
 /// Registers only terminal fonts, settings and scoped keyboard bindings.
 /// Does not read or write the standalone application's configuration.
+/// Terminal words use their own catalogs and follow the host's `I18n` locale;
+/// this never replaces or modifies the host's application messages.
 pub fn init(cx: &mut App) -> anyhow::Result<()> {
     if cx.has_global::<Host>() {
         return Ok(());

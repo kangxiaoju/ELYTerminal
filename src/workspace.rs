@@ -1,8 +1,8 @@
+use crate::i18n::text;
 use std::time::Instant;
 
 use ely_gpui_component::{
     buttons::{ButtonVariant, IconButton, SegmentedControl},
-    i18n::text,
     lists::List,
     motion::Reorder,
     primitives::{FocusScope, IconName},
