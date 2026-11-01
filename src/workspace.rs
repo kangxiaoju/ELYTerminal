@@ -62,15 +62,17 @@ pub const TITLE: &str = "ELYTerminal";
 
 /// Ghostty's keys: Cmd on macOS; off it, Ctrl-Shift for keys a terminal takes, Alt for digits.
 pub fn bind_keys(cx: &mut App) {
-    let (sessions, panel, new, close, digit) = if cfg!(target_os = "macos") {
-        ("cmd-b", "cmd-alt-b", "cmd-t", "cmd-w", "cmd")
+    let (sessions, panel, new, close, last, digits) = if cfg!(target_os = "macos") {
+        ("cmd-b", "cmd-alt-b", "cmd-t", "cmd-w", "cmd-9",
+         ["cmd-1", "cmd-2", "cmd-3", "cmd-4", "cmd-5", "cmd-6", "cmd-7", "cmd-8"])
     } else {
         (
             "ctrl-shift-b",
             "ctrl-shift-alt-b",
             "ctrl-shift-t",
             "ctrl-shift-w",
-            "alt",
+            "alt-9",
+            ["alt-1", "alt-2", "alt-3", "alt-4", "alt-5", "alt-6", "alt-7", "alt-8"],
         )
     };
     let context = Some(CONTEXT);
@@ -81,10 +83,11 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(close, CloseSession, context),
         KeyBinding::new("ctrl-tab", NextSession, context),
         KeyBinding::new("ctrl-shift-tab", PreviousSession, context),
-        KeyBinding::new(format!("{digit}-9"), LastSession, context),
+        KeyBinding::new(last, LastSession, context),
     ]);
     cx.bind_keys(
-        (1..=8).map(|n| KeyBinding::new(format!("{digit}-{n}"), SelectSession(n - 1), context)),
+        digits.into_iter().enumerate()
+            .map(|(n, key)| KeyBinding::new(key, SelectSession(n), context)),
     );
 }
 

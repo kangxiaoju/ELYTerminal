@@ -73,17 +73,17 @@ pub fn menus(cx: &App) -> Vec<Menu> {
 
 /// Binds app commands before building their menus.
 pub fn init(cx: &mut App) {
-    let (quit, modifier) = if cfg!(target_os = "macos") {
-        ("cmd-q", "cmd")
+    let (quit, bigger, plus, smaller, reset) = if cfg!(target_os = "macos") {
+        ("cmd-q", "cmd-=", "cmd-+", "cmd--", "cmd-0")
     } else {
-        ("ctrl-shift-q", "ctrl")
+        ("ctrl-shift-q", "ctrl-=", "ctrl-+", "ctrl--", "ctrl-0")
     };
     cx.bind_keys([
         KeyBinding::new(quit, Quit, None),
-        KeyBinding::new(format!("{modifier}-="), Bigger, None),
-        KeyBinding::new(format!("{modifier}-+"), Bigger, None),
-        KeyBinding::new(format!("{modifier}--"), Smaller, None),
-        KeyBinding::new(format!("{modifier}-0"), ResetSize, None),
+        KeyBinding::new(bigger, Bigger, None),
+        KeyBinding::new(plus, Bigger, None),
+        KeyBinding::new(smaller, Smaller, None),
+        KeyBinding::new(reset, ResetSize, None),
     ]);
     if cfg!(target_os = "macos") {
         cx.bind_keys([KeyBinding::new("cmd-m", Minimize, None)]);
