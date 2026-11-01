@@ -355,7 +355,7 @@ fn shortcuts(cx: &App) -> Vec<Shortcut> {
                 let strokes: Vec<String> = binding
                     .keystrokes()
                     .iter()
-                    .map(|key| key.unparse())
+                    .map(|key| key.unparse(cx.platform_info().os))
                     .collect();
                 shortcuts.push(Shortcut {
                     group: group.clone(),

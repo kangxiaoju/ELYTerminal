@@ -80,10 +80,10 @@ pub fn init(cx: &mut App) {
     };
     cx.bind_keys([
         KeyBinding::new(quit, Quit, None),
-        KeyBinding::new(&format!("{modifier}-="), Bigger, None),
-        KeyBinding::new(&format!("{modifier}-+"), Bigger, None),
-        KeyBinding::new(&format!("{modifier}--"), Smaller, None),
-        KeyBinding::new(&format!("{modifier}-0"), ResetSize, None),
+        KeyBinding::new(format!("{modifier}-="), Bigger, None),
+        KeyBinding::new(format!("{modifier}-+"), Bigger, None),
+        KeyBinding::new(format!("{modifier}--"), Smaller, None),
+        KeyBinding::new(format!("{modifier}-0"), ResetSize, None),
     ]);
     if cfg!(target_os = "macos") {
         cx.bind_keys([KeyBinding::new("cmd-m", Minimize, None)]);

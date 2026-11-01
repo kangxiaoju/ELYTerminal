@@ -81,10 +81,10 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(close, CloseSession, context),
         KeyBinding::new("ctrl-tab", NextSession, context),
         KeyBinding::new("ctrl-shift-tab", PreviousSession, context),
-        KeyBinding::new(&format!("{digit}-9"), LastSession, context),
+        KeyBinding::new(format!("{digit}-9"), LastSession, context),
     ]);
     cx.bind_keys(
-        (1..=8).map(|n| KeyBinding::new(&format!("{digit}-{n}"), SelectSession(n - 1), context)),
+        (1..=8).map(|n| KeyBinding::new(format!("{digit}-{n}"), SelectSession(n - 1), context)),
     );
 }
 
