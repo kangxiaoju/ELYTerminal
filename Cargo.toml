@@ -9,19 +9,19 @@ repository = "https://github.com/ELY-Open-Source/ELYTerminal"
 publish = false
 
 [dependencies]
-alacritty_terminal = { version = "=0.26.0", default-features = false }
+alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "d2781caf4908e58404a31efa0bbac03c562380bc", default-features = false }
 anyhow = "1"
 base64 = "0.22"
 base64-simd = "0.8"
 dirs = "7"
-ely-gpui-component = { git = "https://github.com/ELY-Open-Source/Ely-GPUI-Components.git", rev = "b0350ad820827fd498d3da0bccec3e548326ff31" }
+ely-gpui-component = { git = "ssh://git@github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "ce57ceb9f1c0abbf4f0021eaa3ab4354f018c417" }
 env_logger = "0.11"
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
 gethostname = "1.1.0"
 getrandom = "0.3"
-gpui = { package = "gpui-pre", version = "=0.3.8", default-features = false }
-gpui_platform = { package = "gpui-pre-platform", version = "=0.3.8", features = ["font-kit", "wayland", "x11"] }
+gpui = { package = "gpui-pre", version = "=0.3.10", default-features = false }
+gpui_platform = { package = "gpui-pre-platform", version = "=0.3.10", features = ["font-kit", "wayland", "x11"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 log = "0.4"
 memchr = "2.8"

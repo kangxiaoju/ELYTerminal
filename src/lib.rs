@@ -1,5 +1,6 @@
 pub mod app;
 pub mod blur;
+pub mod embedded;
 #[cfg(windows)]
 pub mod explorer;
 pub mod files;

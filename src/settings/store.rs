@@ -30,6 +30,14 @@ impl SettingsStore {
         Ok(())
     }
 
+    /// Installs host-owned, in-memory settings without opening ELYTerminal's config.
+    pub fn init_embedded(settings: Settings, cx: &mut App) -> anyhow::Result<()> {
+        settings.validate()?;
+        fonts(&settings, cx)?;
+        cx.set_global(Self { settings, path: PathBuf::new() });
+        Ok(())
+    }
+
     pub fn get(cx: &App) -> &Settings {
         &cx.global::<Self>().settings
     }

@@ -120,7 +120,7 @@ pub struct TerminalView {
     stirred: Instant,
     /// The view's place in the history as last drawn.
     offset: usize,
-    _herdr: Task<()>,
+    _herdr: Option<Task<()>>,
     _focus: [Subscription; 3],
     _settings: Subscription,
     _zoom: Subscription,
@@ -185,7 +185,8 @@ impl TerminalView {
             _compactor: Self::compactor(cx),
             stirred: Instant::now(),
             offset: 0,
-            _herdr: super::herdr::follow(cx),
+            _herdr: (!cx.has_global::<crate::embedded::Host>())
+                .then(|| super::herdr::follow(cx)),
             _settings: cx.observe_global::<SettingsStore>(|view, cx| {
                 view.pty
                     .term
