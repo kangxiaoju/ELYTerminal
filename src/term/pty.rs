@@ -298,11 +298,32 @@ impl Pty {
     }
 }
 
+/// A cloned master for off-thread foreground process inspection.
+#[cfg(unix)]
+pub struct ForegroundProbe(std::fs::File);
+
+#[cfg(unix)]
+impl ForegroundProbe {
+    /// Only the foreground group's leader, never a process-table scan.
+    pub fn command(&self) -> std::io::Result<Option<(i32, Vec<String>)>> {
+        let Some(group) = super::unix::foreground(&self.0)? else {
+            return Ok(None);
+        };
+        let args = super::unix::args(group)?;
+        Ok(Some((group, args)))
+    }
+}
+
 #[cfg(unix)]
 impl Pty {
     /// The foreground process group; none once none holds the terminal.
     pub fn foreground(&self) -> std::io::Result<Option<i32>> {
         super::unix::foreground(&self.master)
+    }
+
+    /// Clones the master without reading process metadata.
+    pub fn foreground_probe(&self) -> std::io::Result<ForegroundProbe> {
+        self.master.try_clone().map(ForegroundProbe)
     }
 }
 

@@ -54,6 +54,8 @@ pub enum TerminalEvent {
     Bell,
     /// The state its row shows changed, to this one.
     Shows(Option<State>),
+    /// Records changed independently of their aggregate state.
+    RecordsChanged,
     /// Its last command's status changed, to this one.
     Ended(Option<i32>),
     Exited(ExitStatus),
@@ -206,6 +208,12 @@ impl TerminalView {
     /// What programs in this terminal say they are doing.
     pub fn records(&self) -> &Records {
         &self.records
+    }
+
+    /// A foreground probe whose process reads run off-thread.
+    #[cfg(unix)]
+    pub fn foreground_probe(&self) -> std::io::Result<super::pty::ForegroundProbe> {
+        self.pty.foreground_probe()
     }
 
     /// The last command's status; none while a command runs.

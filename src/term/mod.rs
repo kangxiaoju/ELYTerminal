@@ -42,6 +42,8 @@ pub mod zoom;
 pub use drop::Quote;
 pub use fonts::{ICONS, MONO, load_font};
 pub use pty::{Events, Launch, Listener, Pty, PtyEvent, config, fit, spawn};
+#[cfg(unix)]
+pub use pty::ForegroundProbe;
 pub use status::{Kind, Record, Records, State};
 pub use view::{BLINK, TerminalEvent, TerminalView};
 #[cfg(windows)]

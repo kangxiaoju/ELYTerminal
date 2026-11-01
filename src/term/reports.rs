@@ -128,6 +128,7 @@ impl TerminalView {
 
     /// Notes the state its row shows; a change goes to the owner, and one to waiting, done or error posts.
     pub(super) fn restate(&mut self, cx: &mut Context<Self>) {
+        cx.emit(TerminalEvent::RecordsChanged);
         if self.records.restate() {
             let state = self.records.shows();
             log::info!("terminal {}: its row shows {state:?}", self.pty.pid);
