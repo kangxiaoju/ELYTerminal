@@ -1704,7 +1704,7 @@ checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 [[package]]
 name = "ely-gpui-component"
 version = "0.1.1"
-source = "git+https://github.com/ELY-Open-Source/Ely-GPUI-Components.git?rev=b0350ad820827fd498d3da0bccec3e548326ff31#b0350ad820827fd498d3da0bccec3e548326ff31"
+source = "git+https://github.com/ELY-Open-Source/Ely-GPUI-Components.git?rev=294a8323c08a06bd8e7782d16acee43b6bb0c5eb#294a8323c08a06bd8e7782d16acee43b6bb0c5eb"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -1750,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "elyterminal"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
@@ -1781,6 +1781,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
+ "shlex 1.3.0",
  "signal-hook",
  "sysinfo 0.39.6",
  "unicode-normalization",
@@ -2659,7 +2660,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-macos"
 version = "0.3.8"
-source = "git+https://github.com/ELY-Open-Source/gpui-pre-macos.git?rev=bf1ce7c431459d23522884d7e668183bd5fb9555#bf1ce7c431459d23522884d7e668183bd5fb9555"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-macos.git?rev=b3e25d5c00b0e97c5c8f2e3fe0c22da16aa293bb#b3e25d5c00b0e97c5c8f2e3fe0c22da16aa293bb"
 dependencies = [
  "accesskit",
  "accesskit_macos",

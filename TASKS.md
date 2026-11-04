@@ -264,3 +264,20 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T136 Issues #42 and #50: a Homebrew tap, `ELY-Open-Source/homebrew-tap`, with a cask, and a winget manifest for the portable zip, each refreshed by a script at a release; the install guides tell SmartScreen's prompt from a Defender detection and say how to report a false positive.
 - [x] T137 The README, its Chinese twin and the guides say what 0.2.1 does; PRD, AGENTS.md and the acceptance table hold T130 to T136.
 - [x] T138 Release 0.2.1: the version raised, every build on the release, the notes in English and Chinese, the cask and the winget PR following, each issue answered.
+
+## 43. 0.2.2
+
+- [x] T139 Issue #52: closing a window on a Mac with a Touch Bar does not abort. The macOS fork's AccessKit `SubclassingAdapter` restores the content view's class at close and drops the KVO AppKit's Touch Bar finder set on it; the fork hosts AccessKit's plain `Adapter` on GPUIView, as zed#65186 does. Reproduced first under a TouchBarServer.
+- [x] T140 Issue #60: a font weight for normal text, 100 to 900, in Settings › Appearance; bold text stays bolder.
+- [x] T141 Issue #60: a CJK font, tried for CJK characters before the fallbacks; empty keeps today's behaviour.
+- [x] T142 Issue #60: on Windows, CJK text as clear as in Windows Terminal; gpui's DirectWrite path compared with Windows Terminal's on the owner's PC, fixed in the Windows fork where a cause shows.
+- [x] T143 PR #54: the cursor glides to its new cell; the PR checked, fixed where needed, merged with its author.
+- [x] T144 PR #56: a Files row dragged onto the terminal types its path; Ely's `TreeDrag` made public in Ely first; the PR checked, merged with its author.
+- [x] T145 PR #53: the first session starts in a folder named by `--working-directory`, `--startingDirectory` or `-d`, and under Windows Terminal's Open in Terminal; the PR checked against T135's folder argument, merged with its author.
+- [x] T146 Issue #59: answered; Ely cannot be replaced.
+- [x] T147 Issue #55: profiles, Windows Terminal's way: profiles of the user's own, each a name, a command line and a start folder, and detected ones, WSL distributions, Git Bash, PowerShell and cmd on Windows, the system's shells elsewhere; the + button's menu opens one.
+- [x] T148 PR #57: a right press on the Files tab opens a folder picker that starts a session there; Ely's `SegmentedControl::on_context` in Ely first; the PR checked, merged with its author.
+- [x] T149 PR #58: its author asked to cut the change smaller and drop the old keys' shim; left open.
+- [x] T150 The README, its Chinese twin and the guides say what 0.2.2 does; PRD, AGENTS.md and the acceptance table hold T139 to T149; each issue answered.
+- [x] T151 Release 0.2.2, which the owner asked for once the fixes are in: the version raised, every build on the release, the notes in English and Chinese, the cask and winget following, each issue answered.
+- [ ] T152 Ely main's CI green, which the owner asked for so Ely PR #11 merges: the `ely-core` API snapshot `d6334fc` left stale, `ely-editor`'s version past its release for `Metrics.wheel`, deny's yanked `async-executor` and markdown advisory, and the gate's GPUI Kit compat step; then Ely PR #11 merged.

@@ -383,7 +383,7 @@ impl Files {
     }
 
     /// The path a tree key stands for: the root, or an entry read.
-    fn path(&self, of: &str) -> Option<PathBuf> {
+    pub fn path(&self, of: &str) -> Option<PathBuf> {
         self.named(of).map(|(path, _)| path)
     }
 

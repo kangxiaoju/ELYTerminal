@@ -106,11 +106,13 @@ pub struct SettingsWindow {
     /// Refusals so far; a field keyed by it drops its draft and shows the settings again.
     drafts: usize,
     font: Entity<TextInput>,
+    cjk_font: Entity<TextInput>,
     interface_font: Entity<TextInput>,
     /// A picker's input for each fallback family, and one for the family being added.
     fallbacks: Vec<Entity<TextInput>>,
     /// The empty picker that adds a fallback shows.
     adding: bool,
+    profiles: Vec<terminal::profiles::Fields>,
     /// Whether the cursor preview shows, as it blinks.
     lit: bool,
     /// The worn custom theme the editor shows, its name and its chosen color.
@@ -139,6 +141,7 @@ impl SettingsWindow {
             input
         });
         let font = cx.new(|cx| TextInput::new(window, cx));
+        let cjk_font = cx.new(|cx| TextInput::new(window, cx));
         let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
         let image = cx.new(|cx| {
@@ -173,6 +176,7 @@ impl SettingsWindow {
                 }
             }),
         ];
+        let profiles = terminal::profiles::fields(window, cx);
         // Focus inside, so the window's keys find its context.
         let focus = cx.focus_handle();
         window.focus(&focus, cx);
@@ -189,9 +193,11 @@ impl SettingsWindow {
             failed: None,
             drafts: 0,
             font,
+            cjk_font,
             interface_font,
             fallbacks: Vec::new(),
             adding: false,
+            profiles,
             lit: true,
             editing: None,
             theme_name,
@@ -215,6 +221,7 @@ impl SettingsWindow {
         search.update(cx, |input, cx| {
             input.set_placeholder(text(cx, "et.settings.search_shortcuts", &[]), cx)
         });
+        self.profiles = terminal::profiles::fields(window, cx);
     }
 
     /// Blinks the cursor preview as a terminal blinks its cursor, while it shows.

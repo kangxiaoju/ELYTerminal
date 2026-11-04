@@ -62,7 +62,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - Clipboard: copy, paste (bracketed when asked), copy on select per setting, OSC 52 writes.
 - Kitty's clipboard protocol, OSC 5522, as Ghostty 1.4 takes it: writes up to 64 MiB allowed; each read asks first, showing what it would read, with a choice to allow a program's password for the session; text, images and file lists, written and read alike on every system; under mode 5522 a paste lists the clipboard's types with a password for one read.
 - Kitty graphics, as Ghostty 1.4 takes them: images sent direct, from a file, a temporary file or shared memory, RGB, RGBA or PNG, zlib, in chunks, within a session's quota; placed at the cursor under the ground, between it and the text or over the text, cut and sized as asked, moving with scrolls, clears and resizes; Unicode placeholders and relative placements; animation, its frames composed and played on their clock, paused while its session is hidden. Payloads decode through SIMD. A hidden session gives its images' GPU textures back.
-- Drop: files dropped on the terminal type their paths at the cursor, as macOS Terminal does, each kept literal for the session's shell and followed by a space.
+- Drop: files dropped on the terminal type their paths at the cursor, as macOS Terminal does, each kept literal for the session's shell and followed by a space; a file or folder dragged from Files types its path the same way.
 - Links: OSC 8 and plain URLs; Cmd-press (Ctrl-press off macOS) opens them. Inside herdr, while it takes the mouse, herdr opens them, web links only, as herdr does, whole where its pane wraps them, and underlines them while the key is held; with Shift the terminal opens what it sees.
 - Focus reporting, title (OSC 0/2), scrollback limit per setting, find in scrollback (Ely's `FindWidget`).
 - Idle history packed small, unpacked as it is read, on every system, as Ghostty 1.4 compresses its scrollback.
@@ -85,12 +85,13 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - Ely, the icon's girl, peeks over the window's top edge from behind it, on macOS, Windows and Linux; where no room lies above the window, at the screen's top or full screen, she stands inside it at its bottom left. She moves all the time, as she does in the films: she breathes, sways and blinks, and how the sessions are doing, waiting, an error, work, a finish or calm, moves her. Nothing but her shows: no frame, line or shadow around her. A hop lifts more of her from behind the edge, never her body off it. A press pets her, and wakes her from a doze. A drag moves her along the edge she stands on, and she stays where she is let go. She goes and comes with the window: hidden with it, and on Wayland, whose compositor may lay her over other windows, shown only while it is active; a window kept above it there may still lie under her, as under any popup. A switch in Settings, Terminal, turns her off.
 - The title bar is transparent, as Ghostty's: the window's background, opacity and blur run under it, so it wears the terminal's color.
 - Every control in the title bar takes its own press on every platform, the window buttons Ely draws on Windows and Linux too.
-- Given a folder on the command line, `elyterminal [FOLDER]`, the first session starts there; a `wsl` session in a distribution's share starts that distribution there. cmd refuses a share as its folder, says so, and starts in the Windows folder.
+- Given a folder on the command line, `elyterminal [FOLDER]`, or after `--working-directory`, `-d` or `--startingDirectory`, the first session starts there; a `wsl` session in a distribution's share starts that distribution there. cmd refuses a share as its folder, says so, and starts in the Windows folder.
 
 ## 7. Sessions panel
 
 - A list of sessions. Each row: title, then the working directory, home as `~`.
 - New session (+ and Cmd-T), close (row's ×, Cmd-W), select (press, Cmd-1…9, Ctrl-Tab and Ctrl-Shift-Tab).
+- Profiles, as Windows Terminal's: the arrow beside + opens a menu of the user's profiles, each a name, a command line and a folder, kept in Settings › Terminal › Profiles, then the shells this system holds: on Windows pwsh, powershell, cmd, Git Bash and each WSL distribution, elsewhere each shell `/etc/shells` lists. A command line that names a program alone, or wsl with `-d` alone, runs with the shell's integration; any other arguments run as written, and the session reports no folder.
 - A right press on a row opens a menu at the pointer, while Session menu in Settings › Terminal is on: Duplicate session opens a session of the shell that row runs, in the folder it last reported, right after it and shown; Close session closes the row. A shell that reports no folder, as cmd does, duplicates into the folder it started in.
 - A drag on a row moves it to another place in the list, and the session shown stays shown; Drag sessions to reorder in Settings › Terminal turns the drag off.
 - Rename: a double press on a row's title opens a field in its place; Enter keeps the name, Escape drops it. The name shows in the row, the terminal's header and the window's title over the program's own until renamed again; an empty name gives the title back to the program.
@@ -105,7 +106,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - A switch at the top, centered below the title bar: Git, Files.
 - Files shows the active session's working directory as a tree, folders first, Git status colors on names.
 - Double press: a folder opens, a file opens in the system's default app.
-- A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. Off by default; off, a right press opens nothing.
+- A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. A right press on the Files tab reveals a row between the tabs and the tree, pushing the tree down, to choose one folder through the system dialog and start a session there. A second right press, choosing the action, switching to Git, hiding the panel or disabling Files menu closes the row. Blank space opens no menu; cancellation changes nothing and a failure is shown. Off by default; off, a right press opens nothing.
 - It reloads when the session reports a new directory and at each prompt, and reads its open folders again each second while it shows, so a file another program makes, renames or deletes shows within a second, Git's marks with it.
 
 ## 9. Right panel: Git
@@ -119,15 +120,15 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 
 ## 10. Settings window
 
-Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in the title bar. Categories on the left, rows on the right, each side scrolling on its own, Ely's components. Changes apply at once to every session and save.
+Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in the title bar. Categories on the left, rows on the right, each side scrolling on its own, Ely's components. Changes apply at once to every session and save. Closing it, or any window, on a Mac with a Touch Bar aborts nothing; the last terminal window's close still quits the app.
 
 - Appearance
   - Language: English or 简体中文, for every window and the menu bar, applied at once; what programs, git and the system say stays as it comes.
   - Interface font and Interface size: a family picker with a sample line, the system's font by default, and 12 to 16 px, 13 by default, for the chrome of every window; the terminal keeps its own font.
   - Theme: a grid of previews; on Omarchy, the Omarchy theme first; the user's themes after the built-in ones, then New theme, which makes one from Ely Dark and wears it. While a theme of the user's is worn, its name, its 21 colors (background, foreground, cursor, cursor text, selection and the 16 ANSI colors), each picked as a swatch and set in a color picker, and Delete, after which Ely Dark takes its place.
   - Separate dark theme: a switch; when on, a second grid for dark mode.
-  - Font family: a list of installed fonts. Fallbacks: installed families tried in order for a character the family lacks, each added, changed or removed in a list of pickers. Font size. Line height. Ligatures.
-  - Cursor: style (block, bar, underline, hollow), blink, with a live preview.
+  - Font family: a list of installed fonts. Fallbacks: installed families tried in order for a character the family lacks, each added, changed or removed in a list of pickers. CJK font: a family Chinese, Japanese and Korean characters draw in, with their marks and variation selectors, before Family, empty by default, cleared by Clear. Font size. Weight, 100 to 900, 400 by default, normal text's; bold sits 300 above it, up to 900. Line height. Ligatures. Antialiasing, on Windows and Linux: Grayscale, as Windows Terminal draws, by default, or Subpixel, which gpui draws only on an opaque window.
+  - Cursor: style (block, bar, underline, hollow), blink, glide, on by default, which slides the cursor to its new cell in 90 ms, with a live preview.
   - Background opacity: a slider. Background image: a picture under the terminal, at that opacity, chosen as a file. Background blur: a switch. Backdrop, on Windows 11 from build 22621: Acrylic, Mica or Mica Alt.
   - Padding: horizontal and vertical.
 - Terminal

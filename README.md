@@ -23,6 +23,7 @@ A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) c
 
 - Sessions sit on the left, the terminal in the middle, Git or Files on the right.
 - Shell integration for zsh, bash, fish and PowerShell, so Files and Git follow the session's folder.
+- Profiles beside +: your own command lines, and the shells this system holds, WSL distributions and Git Bash among them.
 - Ely peeks over the window's edge and follows the sessions.
 - Images through kitty's graphics protocol, animations too, and the clipboard through kitty's OSC 5522, which asks you before a program reads what it holds, unless you allowed that program for the session or it answers a paste.
 - Background opacity and blur on macOS, Windows, Wayland and X11, and Mica on Windows 11.
@@ -67,6 +68,15 @@ hosts keep their existing Ely `I18n` global and custom messages: every terminal
 lookup reads its current locale (`en-US` or `zh-CN`), so host locale changes apply
 immediately without replacing the host catalog or installing standalone settings
 observers. Hosts must initialize their `I18n` before rendering terminal UI.
+
+This fork integrates upstream 0.2.2 at `ba664ef6ef0cdfcb35dc6b65d538cc58e7ecd313`
+while retaining host-owned initialization, theme and settings, weak input ownership,
+PTY foreground probes and `RecordsChanged` events. Its new profile, Files panel and
+appearance controls use the same host-locale terminal catalogs as existing controls.
+Embedded hosts can continue running an external PTY bridge through `term::spawn`
+and observing agent records through `TerminalView::records` without starting the
+standalone application's services. Hosts that patch Ely must provide the upstream
+`TreeDrag` and `SegmentedControl::on_context` APIs and resolve one Ely instance.
 
 ## License
 

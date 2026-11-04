@@ -35,6 +35,15 @@ fn a_backdrop_is_acrylic_unless_named() {
 }
 
 #[test]
+fn antialias_is_grayscale_unless_subpixel_is_named() {
+    assert_eq!(Settings::default().text_antialias, Antialias::Grayscale);
+    let settings: Settings = serde_json::from_str(r#"{"text_antialias": "subpixel"}"#)
+        .expect("subpixel is an antialiasing");
+    assert_eq!(settings.text_antialias, Antialias::Subpixel);
+    assert!(serde_json::from_str::<Settings>(r#"{"text_antialias": "cleartype"}"#).is_err());
+}
+
+#[test]
 fn a_value_out_of_range_names_its_field() {
     let settings = Settings {
         line_height: 2.5,
@@ -42,6 +51,12 @@ fn a_value_out_of_range_names_its_field() {
     };
     let error = settings.validate().expect_err("2.5 is too tall");
     assert_eq!(error.to_string(), "line_height is 2.5, outside 1 to 2");
+    let settings = Settings {
+        font_weight: 950.0,
+        ..Settings::default()
+    };
+    let error = settings.validate().expect_err("950 is past black");
+    assert_eq!(error.to_string(), "font_weight is 950, outside 100 to 900");
     let settings = Settings {
         scrollback: 100_001,
         ..Settings::default()
