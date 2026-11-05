@@ -108,6 +108,8 @@ pub struct TerminalView {
     pub(super) shell: Shell,
     /// The system notifications it posted.
     pub(super) notices: Notices,
+    pub(super) lifecycle_notifications: bool,
+    pub(super) system_notifications: bool,
     /// kitty's clipboard protocol: its write, grants and read asking.
     pub(super) clips: clipboard::Session,
     /// The program's title; empty while it names none.
@@ -185,6 +187,8 @@ impl TerminalView {
             ran: None,
             shell: Shell::Busy,
             notices: Notices::default(),
+            lifecycle_notifications: true,
+            system_notifications: true,
             clips: clipboard::Session::default(),
             title: String::new(),
             front: true,
@@ -265,15 +269,28 @@ impl TerminalView {
 
     /// Whether it is the session shown: one shown in an active window posts no notification.
     pub fn set_front(&mut self, front: bool, window: &mut Window) {
+        if self.front == front {
+            return;
+        }
         if front && !self.front {
             // A hidden session's animations paused; their gaps start afresh.
             self.pty.graphics().resume();
         } else if !front {
+            self.animate.take();
+            self.blinking = false;
+            self.shown = true;
             paint::drop_pictures(self.pictures.release(), window);
             // Shown again, the cursor starts where it stands.
             (self.glide, self.target) = (None, None);
         }
         self.front = front;
+    }
+
+    /// Hosts may own lifecycle notices without dropping protocol queries.
+    /// Custom OSC notices still post when `system` remains enabled.
+    pub fn set_notification_policy(&mut self, lifecycle: bool, system: bool) {
+        self.lifecycle_notifications = lifecycle;
+        self.system_notifications = system;
     }
 
     fn pump(mut events: Events, cx: &mut Context<Self>) -> Task<()> {

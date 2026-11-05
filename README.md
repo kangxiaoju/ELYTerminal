@@ -78,6 +78,13 @@ and observing agent records through `TerminalView::records` without starting the
 standalone application's services. Hosts that patch Ely must provide the upstream
 `TreeDrag` and `SegmentedControl::on_context` APIs and resolve one Ely instance.
 
+Hosts can call `TerminalView::set_notification_policy(lifecycle, system)` before
+events arrive. Disabling lifecycle notices delegates status/command completion to
+the host while retaining custom OSC notifications; disabling system notices
+honors a host's system preference. Status records and protocol queries always
+remain active. `set_front(false, window)` cancels pending graphics animation and
+cursor blinking without stopping terminal output or the child process.
+
 ## License
 
 MIT, in `LICENSE`. Box drawing and key encoding follow Ghostty's code, MIT, in `LICENSE-GHOSTTY`. The theme files come from iTerm2-Color-Schemes, MIT, with its license in `assets/themes`. JetBrains Mono and its Nerd Font build are under the SIL Open Font License, in `assets/fonts`. The compound text decoder's tables come from libX11, under SunSoft's and Bruno Haible's notice, in `vendor/xim-ctext/tables/LICENSE`. Microsoft's ConPTY, `conpty.dll` and `OpenConsole.exe`, is MIT, in `vendor/conpty/LICENSE`.
