@@ -68,7 +68,7 @@ fn run(script: &str, size: (usize, usize)) -> Ran {
                 PtyEvent::Term(Event::ChildExit(status)) => success = status.success(),
                 PtyEvent::Term(Event::PtyWrite(reply)) => pty.write(reply.into_bytes()),
                 PtyEvent::Term(Event::Exit) => break,
-                PtyEvent::Term(_) | PtyEvent::Mouse(_) => {}
+                PtyEvent::Term(_) | PtyEvent::Mouse(_) | PtyEvent::OutputProcessed(_) => {}
             }
         }
         (folders, marks, statuses, asks, said, success)
@@ -132,6 +132,96 @@ fn kitty_graphics_replies_reach_the_program_and_a_temporary_file_goes() {
     let ran = run(&script, (40, 4));
     assert_eq!(ran.text, r"E_Gi=31;OKE\E_Gi=32;OKE\");
     assert!(!file.exists(), "the temporary file was deleted");
+}
+
+/// Runs `script` and waits, as a host's view does, for the parser to take `target` raw bytes;
+/// returns the grid's first row then, and when the program ended.
+fn barriered(script: &str, target: u64) -> (String, String) {
+    crate::testlog::init();
+    let launch = Launch {
+        program: Some(("/bin/sh".into(), vec!["-c".into(), script.into()])),
+        cwd: std::env::temp_dir(),
+        env: Vec::new(),
+        reports: false,
+        quote: Quote::Posix,
+    };
+    let (pty, mut events) =
+        spawn(&launch, (40, 4), (8, 16), config(&Settings::default())).expect("sh starts");
+    let row = |pty: &Pty| -> String {
+        let term = pty.term.lock();
+        let row = &term.grid()[Line(0)];
+        let text: String = (0..40).map(|column| row[Column(column)].c).collect();
+        text.trim_end().to_string()
+    };
+    let mut barrier = crate::term::barrier::Barrier::default();
+    let mut at = barrier.arm(target, pty.listen_output());
+    let mut seen = at.map(|_| row(&pty));
+    futures::executor::block_on(async {
+        while let Some(event) = events.next().await {
+            match event {
+                PtyEvent::OutputProcessed(bytes) => {
+                    at = at.or(barrier.advance(bytes));
+                    if at.is_some() && seen.is_none() {
+                        seen = Some(row(&pty));
+                    }
+                }
+                PtyEvent::Term(Event::PtyWrite(reply)) => pty.write(reply.into_bytes()),
+                PtyEvent::Term(Event::Exit) => break,
+                _ => {}
+            }
+        }
+    });
+    (seen.expect("the barrier fired"), row(&pty))
+}
+
+#[test]
+fn the_barrier_fires_when_the_parser_has_drawn_the_counted_bytes_not_when_they_are_read() {
+    // `late` comes a second after, so a grid holding it would mean the barrier waited for more.
+    let (at, last) = barriered(r"printf visible; sleep 1; printf late", 7);
+    assert_eq!(at, "visible");
+    assert_eq!(last, "visiblelate");
+}
+
+#[test]
+fn a_barrier_inside_a_synchronized_update_shows_the_last_complete_screen_and_does_not_stall() {
+    // The update's 6 bytes after `one` and the 8 of its start are read, not drawn, until its end.
+    let (at, last) = barriered(
+        r"printf 'one\033[?2026hhidden'; sleep 1; printf '\033[?2026l'",
+        3 + 8 + 6,
+    );
+    assert_eq!(at, "one");
+    assert_eq!(last, "onehidden");
+}
+
+#[test]
+fn a_barrier_inside_a_partial_sequence_fires_with_the_screen_before_it_and_the_stream_is_unchanged() {
+    // Each script's first write ends inside a sequence, the target past its last byte; the parser
+    // (or the prompt scanner, for the OSC) holds the rest a second. The barrier means "a complete screen",
+    // not "every byte consumed", so it shows what came before, and the finished sequence still lands.
+    // A UTF-8 character cut in two:
+    let (at, last) = barriered(r"printf 'ab\303'; sleep 1; printf '\251c'", 3);
+    assert_eq!((at.as_str(), last.as_str()), ("ab", "abéc"));
+    // A CSI cut after its parameter:
+    let (at, last) = barriered(r"printf 'ab\033[3'; sleep 1; printf '1mc'", 5);
+    assert_eq!((at.as_str(), last.as_str()), ("ab", "abc"));
+    // An OSC 133 mark the prompt scanner holds whole:
+    let (at, last) = barriered(r"printf 'ab\033]133;A'; sleep 1; printf '\007c'", 9);
+    assert_eq!((at.as_str(), last.as_str()), ("ab", "abc"));
+    // An OSC the scanner passes on as it comes, cut before its terminator:
+    let (at, last) = barriered(r"printf 'ab\033]0;title'; sleep 1; printf '\007c'", 11);
+    assert_eq!((at.as_str(), last.as_str()), ("ab", "abc"));
+}
+
+#[test]
+fn a_barrier_at_zero_fires_at_once_and_the_program_s_own_queries_are_still_answered() {
+    let (at, _) = barriered("true", 0);
+    assert_eq!(at, "");
+    // Raw, unechoed: the program asks for a mode and reads the parser's reply as before.
+    let (_, last) = barriered(
+        r#"stty raw -echo min 0 time 10; printf '\033[?25$p'; r=$(dd bs=1 count=10 2>/dev/null | tr '\033' E); stty sane; printf '%s' "$r""#,
+        0,
+    );
+    assert_eq!(last, r"E[?25;1$y");
 }
 
 #[test]

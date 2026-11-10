@@ -70,6 +70,7 @@ pub fn bind_keys(cx: &mut App) {
 impl TerminalView {
     /// Bytes from the keyboard: back to the newest line, no selection, then to the program, which sees done and error records.
     pub(super) fn input(&mut self, bytes: Vec<u8>, cx: &mut Context<Self>) {
+        self.unsettle(cx);
         let mut term = self.pty.term.lock();
         term.scroll_display(Scroll::Bottom);
         if term.selection.take().is_some() {
@@ -89,6 +90,7 @@ impl TerminalView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.unsettle(cx);
         log::trace!("terminal {}: key down {:?}", self.pty.pid, event.keystroke);
         if event.prefer_character_input {
             log::debug!(

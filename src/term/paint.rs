@@ -50,7 +50,7 @@ pub fn grid(
     cursor: Option<(Cursor, CursorShape)>,
     preedit: Option<String>,
     look: Look,
-    (pictures, stale): (Vec<Shown>, Vec<Arc<RenderImage>>),
+    (pictures, stale): (Rc<Vec<Shown>>, Vec<Arc<RenderImage>>),
 ) -> impl IntoElement {
     let cell = look.cell;
     let (fit, input) = (view.clone(), view);
@@ -92,15 +92,15 @@ pub fn grid(
             let origin = snapped(bounds.origin, window);
             drop_pictures(stale, window);
             let top = |index: usize| origin + point(px(0.), cell.height * index as f32);
-            paint_pictures(&pictures, Layer::Under, origin, cell, window);
+            paint_pictures(pictures.as_slice(), Layer::Under, origin, cell, window);
             for (index, row) in frame.rows.iter().enumerate() {
                 paint_grounds(row, top(index), &look, window);
             }
-            paint_pictures(&pictures, Layer::Between, origin, cell, window);
+            paint_pictures(pictures.as_slice(), Layer::Between, origin, cell, window);
             for (index, row) in frame.rows.iter().enumerate() {
                 paint_text(row, top(index), &look, window);
             }
-            paint_pictures(&pictures, Layer::Over, origin, cell, window);
+            paint_pictures(pictures.as_slice(), Layer::Over, origin, cell, window);
             match (&preedit, at, &cursor) {
                 (Some(text), Some(at), _) => paint_preedit(text, at, origin, &look, window),
                 (None, _, Some((cursor, shape))) => {

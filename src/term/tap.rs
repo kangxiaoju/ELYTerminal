@@ -8,6 +8,7 @@ use futures::channel::mpsc::UnboundedSender;
 use polling::{Event, PollMode, Poller};
 
 use super::{
+    barrier::Progress,
     clipboard,
     marks::{self, Mark},
     notify::{self, Kitty},
@@ -36,6 +37,9 @@ pub(crate) struct Tapped<P> {
     kitty: Kitty,
     titles: Titles,
     events: UnboundedSender<PtyEvent>,
+    /// The raw bytes read so far, and where a host's output barrier sees them.
+    total: u64,
+    progress: Arc<Progress>,
     pid: u32,
     last: Option<PathBuf>,
     /// The session's own shell names its prompts.
@@ -49,7 +53,12 @@ pub(crate) struct Tapped<P> {
 }
 
 impl<P> Tapped<P> {
-    pub fn new(inner: P, events: UnboundedSender<PtyEvent>, pid: u32) -> Self {
+    pub fn new(
+        inner: P,
+        events: UnboundedSender<PtyEvent>,
+        pid: u32,
+        progress: Arc<Progress>,
+    ) -> Self {
         Self {
             inner,
             scanner: Osc::default(),
@@ -58,6 +67,8 @@ impl<P> Tapped<P> {
             kitty: Kitty::default(),
             titles: Titles::default(),
             events,
+            total: 0,
+            progress,
             pid,
             last: None,
             named: false,
@@ -90,6 +101,8 @@ impl<P: EventedReadWrite> io::Read for Tapped<P> {
                 return Ok(0);
             }
             let (count, dry) = self.fill(&mut buf[..take])?;
+            self.total += count as u64;
+            self.progress.read(self.total);
             let passed = self.pass(buf, count);
             #[cfg(windows)]
             self.keep_waking(passed, dry);

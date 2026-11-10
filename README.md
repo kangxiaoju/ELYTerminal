@@ -85,6 +85,21 @@ honors a host's system preference. Status records and protocol queries always
 remain active. `set_front(false, window)` cancels pending graphics animation and
 cursor blinking without stopping terminal output or the child process.
 
+Hosts that run the PTY bridge themselves can wait for the grid to catch up with a count of raw
+output bytes: `TerminalView::set_output_barrier(bytes, cx)` emits
+`TerminalEvent::OutputBarrier(bytes)` once the parser has taken the PTY's first `bytes` bytes (at
+once if it already has; one target at a time). The count is the tap's read count committed at the
+parser's wakeup, not bytes merely read, so nothing is injected into the stream and nothing is held
+back. Inside a synchronized update (`?2026`) the grid shows the last complete screen. Nothing is
+emitted unless the host calls it. `Pty::output_processed` and `PtyEvent::OutputProcessed` expose the
+same count.
+
+`TerminalView::set_resize_settle(Some(quiet))` is an opt-in for hosts whose programs redraw their
+whole history after a resize. After the grid is resized the view keeps drawing the last whole screen
+until output has rested for `quiet`, at least 500 ms have passed and at most 1 s after the latest
+size; a key, mouse press or wheel turn ends it at once. Parsing, the PTY and the program are not
+held back, and `None` (the default) holds no frame and starts no timer.
+
 ## License
 
 MIT, in `LICENSE`. Box drawing and key encoding follow Ghostty's code, MIT, in `LICENSE-GHOSTTY`. The theme files come from iTerm2-Color-Schemes, MIT, with its license in `assets/themes`. JetBrains Mono and its Nerd Font build are under the SIL Open Font License, in `assets/fonts`. The compound text decoder's tables come from libX11, under SunSoft's and Bruno Haible's notice, in `vendor/xim-ctext/tables/LICENSE`. Microsoft's ConPTY, `conpty.dll` and `OpenConsole.exe`, is MIT, in `vendor/conpty/LICENSE`.

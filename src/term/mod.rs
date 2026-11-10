@@ -1,3 +1,5 @@
+mod barrier;
+mod settle;
 mod backdrop;
 mod boxes;
 mod click;

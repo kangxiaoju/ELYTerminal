@@ -45,7 +45,11 @@ impl Workspace {
                 log::debug!("app: hidden session {} waits", index + 1);
                 session.waiting = true;
             }
-            TerminalEvent::Shows(_) | TerminalEvent::Ended(_) | TerminalEvent::RecordsChanged => {}
+            TerminalEvent::Shows(_)
+            | TerminalEvent::Ended(_)
+            | TerminalEvent::RecordsChanged
+            | TerminalEvent::OutputBarrier(_)
+            | TerminalEvent::Resized { .. } => {}
             TerminalEvent::Dragged(key) => {
                 if index != self.active {
                     return;

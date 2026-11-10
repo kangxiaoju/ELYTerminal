@@ -78,6 +78,12 @@ impl TerminalView {
                     cx.emit(TerminalEvent::Title(title));
                 }
                 PtyEvent::Clipboard(packet) => self.clipboard(packet, cx),
+                PtyEvent::OutputProcessed(bytes) => {
+                    if let Some(bytes) = self.barrier.advance(bytes) {
+                        self.pty.stop_listening_output();
+                        cx.emit(TerminalEvent::OutputBarrier(bytes));
+                    }
+                }
                 PtyEvent::Reset => {
                     self.records.reset();
                     self.title.clear();
@@ -88,6 +94,10 @@ impl TerminalView {
         }
         if drawn {
             self.stirred = Instant::now();
+            // The one settle timer re-checks its due when it wakes, so output only moves the due.
+            if let Some(settling) = &mut self.settling {
+                settling.output(self.stirred);
+            }
             let kitty = *self.pty.term.lock().mode() & TermMode::KITTY_KEYBOARD_PROTOCOL;
             if kitty != self.kitty {
                 log::debug!("terminal {}: kitty keyboard flags {kitty:?}", self.pty.pid);

@@ -25,12 +25,13 @@ use gpui::{
 };
 
 use super::{
+    barrier::Barrier,
     click::Shell,
     clipboard,
     find::Finder,
     fonts::look,
-    frame::frame,
-    graphics::{Pictures, runs},
+    frame::{Frame, frame},
+    graphics::{Pictures, Shown, runs},
     ink::Ink,
     input::{self, Find, Held, NextPrompt, PreviousPrompt, Went},
     marks::Mark,
@@ -40,6 +41,7 @@ use super::{
     pty::{Events, Pty, PtyEvent, config, fit},
     reports::Notices,
     scrollbar::{self, Span},
+    settle::Settling,
     status::{Records, State},
     zoom,
 };
@@ -66,6 +68,10 @@ pub enum TerminalEvent {
     Exited(ExitStatus),
     /// A Files node's drag landed on it: the node's tree key.
     Dragged(SharedString),
+    /// The parser took the output through the byte count a host set with `set_output_barrier`.
+    OutputBarrier(u64),
+    /// The first laid-out grid, then each changed cell size. Hosts can size an external PTY before replay.
+    Resized { columns: u16, rows: u16 },
 }
 
 /// A program on a pseudo-terminal, drawn cell by cell in the theme and font the settings choose.
@@ -135,6 +141,19 @@ pub struct TerminalView {
     stirred: Instant,
     /// The view's place in the history as last drawn.
     offset: usize,
+    /// The host's output barrier, if it set one.
+    pub(super) barrier: Barrier,
+    /// Resize settling, when the host asked: how long output must rest before a resized grid shows.
+    settle: Option<Duration>,
+    /// The last screen drawn outside a settling, kept only while the host asked for settling.
+    last_frame: Option<Rc<Frame>>,
+    /// The placements drawn with `last_frame`, so images stay while it is held.
+    last_pictures: Option<Rc<Vec<Shown>>>,
+    /// A resize's wait: `last_frame` stays drawn until it ends.
+    settling: Option<Settling>,
+    settle_timer: Option<Task<()>>,
+    /// The first fit, which sizes a new terminal, never settles.
+    sized: bool,
     _herdr: Option<Task<()>>,
     _focus: [Subscription; 3],
     _settings: Subscription,
@@ -204,6 +223,13 @@ impl TerminalView {
             _compactor: Self::compactor(cx),
             stirred: Instant::now(),
             offset: 0,
+            barrier: Barrier::default(),
+            settle: None,
+            last_frame: None,
+            last_pictures: None,
+            settling: None,
+            settle_timer: None,
+            sized: false,
             _herdr: (!cx.has_global::<crate::embedded::Host>())
                 .then(|| super::herdr::follow(cx)),
             _settings: cx.observe_global::<SettingsStore>(|view, cx| {
@@ -280,6 +306,7 @@ impl TerminalView {
             self.blinking = false;
             self.shown = true;
             paint::drop_pictures(self.pictures.release(), window);
+            self.last_pictures = None;
             // Shown again, the cursor starts where it stands.
             (self.glide, self.target) = (None, None);
         }
@@ -291,6 +318,77 @@ impl TerminalView {
     pub fn set_notification_policy(&mut self, lifecycle: bool, system: bool) {
         self.lifecycle_notifications = lifecycle;
         self.system_notifications = system;
+    }
+
+    /// Opt-in: emits `TerminalEvent::OutputBarrier(bytes)` once the parser has taken the pty's first
+    /// `bytes` raw output bytes (what `term::spawn`'s reader counted), at once if it already has.
+    /// It follows the wakeup that drew them. Inside a synchronized update the grid shows the last
+    /// complete screen. One target waits at a time; a new one replaces it. Output is never held back
+    /// or altered, and a view whose host never calls this emits nothing.
+    pub fn set_output_barrier(&mut self, bytes: u64, cx: &mut Context<Self>) {
+        let reached = self.pty.listen_output();
+        if let Some(bytes) = self.barrier.arm(bytes, reached) {
+            self.pty.stop_listening_output();
+            cx.emit(TerminalEvent::OutputBarrier(bytes));
+        }
+    }
+
+    /// Opt-in: after a resize, keeps the last whole screen drawn until the program's output has
+    /// rested for `quiet` (and at least half a second has passed, and at most one second from the
+    /// latest size), so a program that redraws its history at the new size shows its final screen,
+    /// not each frame. Keys, mouse presses and the wheel end it at once. Nothing is held back from
+    /// the parser or the program. `None`, the default, never holds a frame or starts a timer.
+    pub fn set_resize_settle(&mut self, quiet: Option<Duration>) {
+        self.settle = quiet;
+        if quiet.is_none() {
+            self.last_frame = None;
+            self.last_pictures = None;
+            self.settling = None;
+            self.settle_timer = None;
+        }
+    }
+
+    /// A resize while settling is on: hold `last_frame`, or push the end out.
+    fn settle_begin(&mut self, cx: &mut Context<Self>) {
+        let (Some(quiet), Some(_)) = (self.settle, &self.last_frame) else {
+            return;
+        };
+        let now = Instant::now();
+        match &mut self.settling {
+            Some(settling) => settling.resized(now),
+            None => self.settling = Some(Settling::begin(now, quiet)),
+        }
+        self.settle_arm(cx);
+    }
+
+    /// One timer to the settling's end, replacing the last.
+    pub(super) fn settle_arm(&mut self, cx: &mut Context<Self>) {
+        let Some(settling) = &self.settling else {
+            return;
+        };
+        let wait = settling.due().saturating_duration_since(Instant::now());
+        self.settle_timer = Some(cx.spawn(async move |view, cx| {
+            cx.background_executor().timer(wait).await;
+            view.update(cx, |view, cx| view.settle_end(cx)).ok();
+        }));
+    }
+
+    fn settle_end(&mut self, cx: &mut Context<Self>) {
+        if self
+            .settling
+            .is_some_and(|settling| settling.due() > Instant::now())
+        {
+            return self.settle_arm(cx);
+        }
+        self.unsettle(cx);
+    }
+
+    /// Shows the grid again now: the wait ended, or the user acted.
+    pub(super) fn unsettle(&mut self, cx: &mut Context<Self>) {
+        if self.settling.take().is_some() {
+            self.settle_timer = None;
+            cx.notify();
+        }
     }
 
     fn pump(mut events: Events, cx: &mut Context<Self>) -> Task<()> {
@@ -329,10 +427,17 @@ impl TerminalView {
         let fitted = fit(columns, lines, self.cell);
         let size = (usize::from(fitted.num_cols), usize::from(fitted.num_lines));
         if size == self.size {
+            if !std::mem::replace(&mut self.sized, true) {
+                cx.emit(TerminalEvent::Resized { columns: fitted.num_cols, rows: fitted.num_lines });
+            }
             return false;
+        }
+        if std::mem::replace(&mut self.sized, true) {
+            self.settle_begin(cx);
         }
         self.size = size;
         self.pty.resize(size, self.cell);
+        cx.emit(TerminalEvent::Resized { columns: fitted.num_cols, rows: fitted.num_lines });
         log::debug!("terminal {}: {} by {}", self.pty.pid, size.0, size.1);
         self.search(false, cx);
         true
@@ -369,19 +474,52 @@ impl Render for TerminalView {
         let theme = themes::active(&settings, window.appearance(), cx);
         let term = self.pty.term.lock();
         let ink = Ink::new(&theme, term.colors());
-        let lit = self.finder.as_ref().map_or_else(Vec::new, |finder| {
-            finder.lit(&term, cx.theme().colors.warning)
-        });
-        let shown = frame(&term, &ink, &lit);
+        // A resize settling keeps the last whole screen drawn: no frame, no animation tick, no pictures.
+        let held = self
+            .settling
+            .is_some()
+            .then(|| self.last_frame.clone())
+            .flatten();
+        let shown = match &held {
+            Some(kept) => kept.clone(),
+            None => {
+                let lit = self.finder.as_ref().map_or_else(Vec::new, |finder| {
+                    finder.lit(&term, cx.theme().colors.warning)
+                });
+                let fresh = Rc::new(frame(&term, &ink, &lit));
+                if self.settle.is_some() {
+                    self.last_frame = Some(fresh.clone());
+                }
+                fresh
+            }
+        };
         let mut graphics = self.pty.graphics();
+        // Textures whose image went, dropped by this paint; none while a screen is held.
+        let mut stale_pictures = Vec::new();
         // Only a drawn session ticks; a hidden one pauses.
-        let next = graphics.tick(Instant::now());
-        let (pictures, stale) = self.pictures.shown(
-            &graphics,
-            &runs(&term),
-            term.grid().display_offset(),
-            (term.columns(), term.screen_lines()),
-        );
+        let next = if held.is_some() {
+            None
+        } else {
+            graphics.tick(Instant::now())
+        };
+        let pictures = match (&held, &self.last_pictures) {
+            (Some(_), Some(kept)) => kept.clone(),
+            (Some(_), None) => Rc::new(Vec::new()),
+            (None, _) => {
+                let (shown, stale) = self.pictures.shown(
+                    &graphics,
+                    &runs(&term),
+                    term.grid().display_offset(),
+                    (term.columns(), term.screen_lines()),
+                );
+                let fresh = Rc::new(shown);
+                if self.settle.is_some() {
+                    self.last_pictures = Some(fresh.clone());
+                }
+                stale_pictures = stale;
+                fresh
+            }
+        };
         drop(graphics);
         self.animate = next.map(|delay| {
             cx.spawn(async move |view, cx| {
@@ -462,15 +600,18 @@ impl Render for TerminalView {
                     graphics.cell = (cell.0.into(), cell.1.into());
                     drop(graphics);
                     self.pty.resize(self.size, cell);
+                    if self.sized {
+                        self.settle_begin(cx);
+                    }
                 }
                 let preedit = self.marked.clone();
                 root.child(paint::grid(
                     cx.entity(),
-                    Rc::new(shown),
+                    shown,
                     cursor,
                     preedit,
                     look,
-                    (pictures, stale),
+                    (pictures, stale_pictures),
                 ))
             }
             Err(error) => {
