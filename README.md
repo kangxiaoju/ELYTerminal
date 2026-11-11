@@ -79,6 +79,11 @@ lookup reads its current locale (`en-US` or `zh-CN`), so host locale changes app
 immediately without replacing the host catalog or installing standalone settings
 observers. Hosts must initialize their `I18n` before rendering terminal UI.
 
+On Windows, embedded initialization also reads the system wheel settings before
+terminal input is handled. These settings are shared process-wide: repeated
+embedded initialization or later standalone window creation reuses them, while
+an initial Windows settings-query failure is returned to the caller.
+
 This fork integrates upstream 0.2.2 at `ba664ef6ef0cdfcb35dc6b65d538cc58e7ecd313`
 while retaining host-owned initialization, theme and settings, weak input ownership,
 PTY foreground probes and `RecordsChanged` events. Its new profile, Files panel and

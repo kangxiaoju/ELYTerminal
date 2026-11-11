@@ -18,6 +18,8 @@ pub fn init(cx: &mut App) -> anyhow::Result<()> {
     if cx.has_global::<Host>() {
         return Ok(());
     }
+    #[cfg(windows)]
+    crate::term::keep_wheel()?;
     cx.text_system().add_fonts(vec![
         Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Bold.ttf")),
         Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Italic.ttf")),

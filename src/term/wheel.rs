@@ -56,12 +56,15 @@ pub fn lines(
 #[cfg(windows)]
 static KEPT: std::sync::OnceLock<(f32, f32)> = std::sync::OnceLock::new();
 
-/// Reads Windows' wheel settings as the main window opens.
+/// Reads Windows' wheel settings once for standalone and embedded terminals.
 #[cfg(windows)]
 pub fn keep() -> anyhow::Result<()> {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         SPI_GETWHEELSCROLLCHARS, SPI_GETWHEELSCROLLLINES, SystemParametersInfoW,
     };
+    if KEPT.get().is_some() {
+        return Ok(());
+    }
     let setting = |action, name| {
         let mut value = 0u32;
         let read = unsafe { SystemParametersInfoW(action, 0, (&raw mut value).cast(), 0) } != 0;
@@ -72,10 +75,9 @@ pub fn keep() -> anyhow::Result<()> {
         setting(SPI_GETWHEELSCROLLLINES, "lines a notch")?,
         setting(SPI_GETWHEELSCROLLCHARS, "characters a sideways notch")?,
     );
-    anyhow::ensure!(
-        KEPT.set(kept).is_ok(),
-        "wheel: a second window keeps Windows' settings"
-    );
+    if KEPT.set(kept).is_err() {
+        return Ok(());
+    }
     log::info!(
         "wheel: Windows sets {} lines a notch and {} characters a sideways one",
         kept.0,
@@ -105,6 +107,15 @@ mod tests {
     use gpui::{Modifiers, point, px};
 
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn keeping_windows_settings_twice_preserves_scroll_settings() {
+        keep().expect("read Windows' wheel settings");
+        let first = settings().expect("Windows' wheel settings were kept");
+        keep().expect("reuse Windows' wheel settings");
+        assert_eq!(settings(), Some(first));
+    }
 
     fn wheel(delta: ScrollDelta, shift: bool) -> ScrollEvent {
         let modifiers = Modifiers {
