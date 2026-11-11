@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/ELY-Open-Source/ELYTerminal?style=flat-square&color=24292f)](https://github.com/ELY-Open-Source/ELYTerminal/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.95-dea584?style=flat-square)](https://www.rust-lang.org)
-[![GPUI](https://img.shields.io/badge/GPUI-0.3-5b4cff?style=flat-square)](https://crates.io/crates/gpui-pre)
+[![GPUI Fast](https://img.shields.io/badge/GPUI_Fast-0.1.14-5b4cff?style=flat-square)](https://github.com/longbridge/gpui-fast)
 [![Ely](https://img.shields.io/badge/Ely-components-6d28d9?style=flat-square)](https://github.com/ELY-Open-Source/Ely-GPUI-Components)
 [![alacritty](https://img.shields.io/badge/alacritty-0.26-f46d01?style=flat-square)](https://github.com/alacritty/alacritty)
 
@@ -57,6 +57,16 @@ cargo run --release
 ```
 
 Release scripts, Linux libraries and the log are in [docs/en_us/develop.md](docs/en_us/develop.md).
+
+This branch uses GPUI Fast directly, without GPUI Kit. Embedded hosts must resolve
+the same fixed Fast source as Ely and the terminal; enabling Fast only in the host
+does not migrate its dependencies. Native platform defaults are disabled, with
+`font-kit`, `wayland` and `x11` selected explicitly. The existing PTY, parser,
+host-owned settings and visibility APIs are unchanged.
+
+GPUI Fast 0.1.14's upstream Apple renderer requires macOS 12 and SDK 26; existing
+release downloads above describe their own older build, not verification of this
+migration branch. macOS and Windows native validation must be recorded separately.
 
 Embedded hosts own the `TerminalView` entity and close a session by releasing it.
 The native input handler keeps only a weak entity reference: deferred platform

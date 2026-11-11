@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/ELY-Open-Source/ELYTerminal?style=flat-square&color=24292f)](https://github.com/ELY-Open-Source/ELYTerminal/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.95-dea584?style=flat-square)](https://www.rust-lang.org)
-[![GPUI](https://img.shields.io/badge/GPUI-0.3-5b4cff?style=flat-square)](https://crates.io/crates/gpui-pre)
+[![GPUI Fast](https://img.shields.io/badge/GPUI_Fast-0.1.14-5b4cff?style=flat-square)](https://github.com/longbridge/gpui-fast)
 [![Ely](https://img.shields.io/badge/Ely-components-6d28d9?style=flat-square)](https://github.com/ELY-Open-Source/Ely-GPUI-Components)
 [![alacritty](https://img.shields.io/badge/alacritty-0.26-f46d01?style=flat-square)](https://github.com/alacritty/alacritty)
 
@@ -57,6 +57,12 @@ cargo run --release
 ```
 
 发行脚本、Linux 库和日志在 [docs/zh_cn/develop.md](docs/zh_cn/develop.md)。
+
+此分支直接使用 GPUI Fast，不经 GPUI Kit。嵌入宿主、Ely 与终端必须解析到同一固定
+Fast 来源，仅在宿主开启 Fast 不会迁移依赖库。平台关闭默认功能，显式启用
+`font-kit`、`wayland`、`x11`；PTY、解析器、宿主管理设置和可见性 API 保持不变。
+Fast 0.1.14 的 Apple 渲染器要求 macOS 12 和 SDK 26；上方发行版下载说明不代表此
+迁移分支已完成原生验证，macOS 与 Windows 结果分别记录。
 
 ## 许可
 

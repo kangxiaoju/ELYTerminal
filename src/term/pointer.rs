@@ -6,7 +6,7 @@ use alacritty_terminal::{
 };
 use gpui::{
     ClipboardItem, Context, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    Pixels, Point, ScrollWheelEvent, Size, Window,
+    Pixels, Point, ScrollEvent, Size, Window,
 };
 
 use super::{
@@ -270,7 +270,7 @@ impl TerminalView {
 
     pub(super) fn wheel(
         &mut self,
-        event: &ScrollWheelEvent,
+        event: &ScrollEvent,
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {

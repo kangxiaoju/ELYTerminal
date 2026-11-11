@@ -1,6 +1,6 @@
 //! Lines a wheel event scrolls, from gpui's units per system.
 
-use gpui::{Pixels, ScrollDelta, ScrollWheelEvent};
+use gpui::{Pixels, ScrollDelta, ScrollEvent};
 
 /// Lines per gpui line: macOS's notch scrolls 3, as Ghostty's.
 const NOTCH: f32 = if cfg!(target_os = "macos") { 3. } else { 1. };
@@ -10,7 +10,7 @@ const PAGE: f32 = u32::MAX as f32;
 /// Whole lines `event` moves, `rows` at most; `rest` keeps parts.
 pub fn lines(
     rest: &mut f32,
-    event: &ScrollWheelEvent,
+    event: &ScrollEvent,
     height: Pixels,
     rows: usize,
     settings: impl FnOnce() -> Option<(f32, f32)>,
@@ -106,15 +106,15 @@ mod tests {
 
     use super::*;
 
-    fn wheel(delta: ScrollDelta, shift: bool) -> ScrollWheelEvent {
+    fn wheel(delta: ScrollDelta, shift: bool) -> ScrollEvent {
         let modifiers = Modifiers {
             shift,
             ..Modifiers::default()
         };
-        ScrollWheelEvent {
+        ScrollEvent {
             delta,
             modifiers,
-            ..ScrollWheelEvent::default()
+            ..ScrollEvent::default()
         }
     }
 

@@ -14,14 +14,14 @@ anyhow = "1"
 base64 = "0.22"
 base64-simd = "0.8"
 dirs = "7"
-ely-gpui-component = { git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "a1c8adde180664850600f57d0642eb97b6a118ee" }
+ely-gpui-component = { git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "a528a4066f1fec3a33d46d7854e9535b03e6a54a" }
 env_logger = "0.11"
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
 gethostname = "1.1.0"
 getrandom = "0.3"
-gpui = { package = "gpui-pre", version = "=0.3.10", default-features = false }
-gpui_platform = { package = "gpui-pre-platform", version = "=0.3.10", features = ["font-kit", "wayland", "x11"] }
+gpui = { package = "gpui-fast", git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "40427c396cc92b6946940e0e498612a8b680ce30", default-features = false }
+gpui_platform = { package = "gpui-fast-platform", git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "40427c396cc92b6946940e0e498612a8b680ce30", default-features = false, features = ["font-kit", "wayland", "x11"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 log = "0.4"
 memchr = "2.8"

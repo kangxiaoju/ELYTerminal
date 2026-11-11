@@ -569,7 +569,7 @@ impl Render for TerminalView {
             .on_action(cx.listener(|view, _: &NextPrompt, _, cx| view.scroll_to_prompt(false, cx)))
             .on_any_mouse_down(cx.listener(Self::mouse_down))
             .on_mouse_move(cx.listener(Self::mouse_move))
-            .on_scroll_wheel(cx.listener(Self::wheel))
+            .on_scroll(cx.listener(Self::wheel))
             .on_drop(cx.listener(|view, paths: &ExternalPaths, _, cx| view.drop_paths(paths, cx)))
             .on_drop(cx.listener(|view, drag: &TreeDrag, _, cx| view.dragged(drag, cx)))
             .size_full()
