@@ -63,9 +63,9 @@ the same fixed Fast source as Ely and the terminal; enabling Fast only in the ho
 does not migrate its dependencies. Native platform defaults are disabled, with
 `font-kit`, `wayland` and `x11` selected explicitly. The existing PTY, parser,
 host-owned settings and visibility APIs are unchanged.
-Ely components are pinned to `8b9ab8b1a827bcb6102eaecabffd0b1f623d5401`, shared
-with embedded hosts for multi-node graph search highlights and the existing
-activation/read-only APIs; the Fast runtime pin is unchanged.
+Ely components are pinned to `ebdedc0a4f250cdbd58d3fbf7f762981c8650bf6`, shared
+with embedded hosts for controlled mind-map branch folding, multi-node graph
+search highlights and activation/read-only APIs; the Fast runtime pin is unchanged.
 
 GPUI Fast 0.1.14's upstream Apple renderer requires macOS 12 and SDK 26; existing
 release downloads above describe their own older build, not verification of this

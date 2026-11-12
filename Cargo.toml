@@ -14,7 +14,7 @@ anyhow = "1"
 base64 = "0.22"
 base64-simd = "0.8"
 dirs = "7"
-ely-gpui-component = { git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "8b9ab8b1a827bcb6102eaecabffd0b1f623d5401" }
+ely-gpui-component = { git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "ebdedc0a4f250cdbd58d3fbf7f762981c8650bf6" }
 env_logger = "0.11"
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
