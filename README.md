@@ -63,7 +63,7 @@ the same fixed Fast source as Ely and the terminal; enabling Fast only in the ho
 does not migrate its dependencies. Native platform defaults are disabled, with
 `font-kit`, `wayland` and `x11` selected explicitly. The existing PTY, parser,
 host-owned settings and visibility APIs are unchanged.
-Ely components are pinned to `04ab848ec2da3d8d9eafe878e41f8b3bb6368875`, shared
+Ely components are pinned to `8b9ab8b1a827bcb6102eaecabffd0b1f623d5401`, shared
 with embedded hosts for multi-node graph search highlights and the existing
 activation/read-only APIs; the Fast runtime pin is unchanged.
 
