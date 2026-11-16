@@ -4,7 +4,7 @@ use std::borrow::Cow;
 
 use gpui::{App, Global};
 
-use crate::{settings::{Settings, SettingsStore}, term::{input, zoom}};
+use crate::{settings::{Settings, SettingsStore}, term::zoom};
 
 /// Presence selects the host's Ely palette and disables herdr discovery.
 pub struct Host;
@@ -35,6 +35,6 @@ pub fn init(cx: &mut App) -> anyhow::Result<()> {
     }, cx)?;
     cx.set_global(zoom::Enlarged::default());
     cx.set_global(Host);
-    input::bind_keys(cx);
+    crate::keymap::init(cx);
     Ok(())
 }

@@ -20,7 +20,7 @@ use ely_gpui_component::{
 use futures::StreamExt;
 use gpui::{
     Bounds, Context, EventEmitter, ExternalPaths, FocusHandle, Focusable, IntoElement, MouseButton,
-    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Task, Window, div,
+    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Task, Window, canvas, div,
     prelude::*, px,
 };
 
@@ -33,7 +33,7 @@ use super::{
     frame::{Frame, frame},
     graphics::{Pictures, Shown, runs},
     ink::Ink,
-    input::{self, Find, Held, NextPrompt, PreviousPrompt, Went},
+    input::{self, Clear, Find, Held, NextPrompt, PreviousPrompt, Went},
     marks::Mark,
     mouse::MouseMode,
     paint,
@@ -72,6 +72,7 @@ pub enum TerminalEvent {
     OutputBarrier(u64),
     /// The first laid-out grid, then each changed cell size. Hosts can size an external PTY before replay.
     Resized { columns: u16, rows: u16 },
+    Focused,
 }
 
 /// A program on a pseudo-terminal, drawn cell by cell in the theme and font the settings choose.
@@ -89,8 +90,6 @@ pub struct TerminalView {
     pub(super) pointer: Pointer,
     /// The mouse mode, as the tap follows it.
     pub(super) mouse: MouseMode,
-    /// The background picture that last failed, logged once.
-    pub(super) backdrop_failed: Option<std::path::PathBuf>,
     /// Kitty graphics' textures.
     pictures: Pictures,
     /// Keys go as Windows' records, as ConPTY asks.
@@ -118,6 +117,8 @@ pub struct TerminalView {
     pub(super) system_notifications: bool,
     /// kitty's clipboard protocol: its write, grants and read asking.
     pub(super) clips: clipboard::Session,
+    /// A paste that waits for the user's word.
+    pub(super) pasting: Option<String>,
     /// The program's title; empty while it names none.
     pub(super) title: String,
     /// It is the session shown.
@@ -192,7 +193,6 @@ impl TerminalView {
             target: None,
             pointer: Pointer::default(),
             mouse: MouseMode::default(),
-            backdrop_failed: None,
             pictures: Pictures::default(),
             #[cfg(windows)]
             win32: false,
@@ -209,6 +209,7 @@ impl TerminalView {
             lifecycle_notifications: true,
             system_notifications: true,
             clips: clipboard::Session::default(),
+            pasting: None,
             title: String::new(),
             front: true,
             active: false,
@@ -446,6 +447,10 @@ impl TerminalView {
     /// Tells a program that asked, by mode 1004, when the terminal gains or loses focus.
     fn refocus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.active = window.is_window_active();
+        // Its release may land in another app.
+        if !self.active {
+            self.end_selection(cx);
+        }
         let focused = self.focus.is_focused(window) && window.is_window_active();
         if focused != self.focused {
             self.focused = focused;
@@ -474,19 +479,36 @@ impl Render for TerminalView {
         let theme = themes::active(&settings, window.appearance(), cx);
         let term = self.pty.term.lock();
         let ink = Ink::new(&theme, term.colors());
-        // A resize settling keeps the last whole screen drawn: no frame, no animation tick, no pictures.
+        // Both sides are needed: a resize settling keeps the last whole screen drawn
+        // (no frame, no animation tick, no pictures), and the pointer's link is what the
+        // hovered cell underlines.
         let held = self
             .settling
             .is_some()
             .then(|| self.last_frame.clone())
             .flatten();
+        let link = self
+            .pointer
+            .hover
+            .and_then(|_| self.pointer.hovered(window.mouse_position(), self.size))
+            .and_then(|(column, row)| {
+                super::links::hit_at(
+                    &term,
+                    alacritty_terminal::index::Point::new(
+                        alacritty_terminal::index::Line(
+                            row as i32 - term.grid().display_offset() as i32,
+                        ),
+                        alacritty_terminal::index::Column(column),
+                    ),
+                )
+            });
         let shown = match &held {
             Some(kept) => kept.clone(),
             None => {
                 let lit = self.finder.as_ref().map_or_else(Vec::new, |finder| {
                     finder.lit(&term, cx.theme().colors.warning)
                 });
-                let fresh = Rc::new(frame(&term, &ink, &lit));
+                let fresh = Rc::new(frame(&term, &ink, &lit, link.as_ref()));
                 if self.settle.is_some() {
                     self.last_frame = Some(fresh.clone());
                 }
@@ -563,12 +585,19 @@ impl Render for TerminalView {
             .on_action(cx.listener(|view, _: &Paste, _, cx| view.paste(cx)))
             .on_action(cx.listener(|view, _: &SelectAll, _, cx| view.select_all(cx)))
             .on_action(cx.listener(|view, _: &Find, window, cx| view.find(window, cx)))
+            .on_action(cx.listener(|view, _: &Clear, _, cx| view.clear(cx)))
             .on_action(
                 cx.listener(|view, _: &PreviousPrompt, _, cx| view.scroll_to_prompt(true, cx)),
             )
             .on_action(cx.listener(|view, _: &NextPrompt, _, cx| view.scroll_to_prompt(false, cx)))
             .on_any_mouse_down(cx.listener(Self::mouse_down))
             .on_mouse_move(cx.listener(Self::mouse_move))
+            .hover_listener_mode(gpui::HoverListenerMode::InputModalityIndependent)
+            .on_hover(cx.listener(|view, hovered: &bool, window, cx| {
+                view.pointer.hover = hovered.then(|| window.mouse_position());
+                cx.notify();
+            }))
+            // gpui-fast renamed `on_scroll_wheel` to `on_scroll`.
             .on_scroll(cx.listener(Self::wheel))
             .on_drop(cx.listener(|view, paths: &ExternalPaths, _, cx| view.drop_paths(paths, cx)))
             .on_drop(cx.listener(|view, drag: &TreeDrag, _, cx| view.dragged(drag, cx)))
@@ -619,18 +648,22 @@ impl Render for TerminalView {
                 root.text_color(ink.fg).child(format!("{error:#}"))
             }
         };
-        let backdrop = self.backdrop(&settings, window, cx);
+        let this = cx.entity();
         div()
             .relative()
             .size_full()
-            .children(backdrop)
             .child(root)
             .children(scrollbar::bar(span, window, cx))
+            .child(canvas(
+                |_, _, _| {},
+                move |_, _, window, cx| super::pointer::follow_drag(&this, window, cx),
+            ))
             .children(
                 self.find_box(cx)
                     .map(|found| div().absolute().top_2().right_4().child(found)),
             )
             .children(self.clipboard_prompt(cx))
+            .children(self.paste_prompt(cx))
     }
 }
 

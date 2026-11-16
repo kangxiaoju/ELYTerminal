@@ -13,9 +13,9 @@ use ely_gpui_component::{
 };
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FocusHandle, InteractiveElement, IntoElement,
-    KeyBinding, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
-    Subscription, Task, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
-    actions, div, prelude::FluentBuilder, px, size,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Task,
+    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions, actions, div,
+    prelude::FluentBuilder, px, size,
 };
 
 use super::{Settings, SettingsStore};
@@ -23,13 +23,17 @@ use crate::{app::APP_ID, menus, term::BLINK, updates::Updates};
 
 mod appearance;
 #[cfg(windows)]
+mod defterm;
+#[cfg(windows)]
 mod explorer;
+mod picture;
+mod shortcuts;
 mod terminal;
 
 actions!(elyterminal, [OpenSettings, CloseSettings]);
 
 /// The key context of the settings window's content.
-const CONTEXT: &str = "Settings";
+pub const CONTEXT: &str = "Settings";
 
 /// Each category's key, its name's key and its icon.
 const SECTIONS: [(&str, &str, IconName); 2] = [
@@ -37,17 +41,8 @@ const SECTIONS: [(&str, &str, IconName); 2] = [
     ("terminal", "et.settings.terminal", IconName::Terminal),
 ];
 
-/// Cmd-, opens the settings, Cmd-W closes them; off macOS Ctrl-, and Ctrl-Shift-W, as Ghostty's.
-pub fn bind_keys(cx: &mut App) {
-    let (open, close) = if cfg!(target_os = "macos") {
-        ("cmd-,", "cmd-w")
-    } else {
-        ("ctrl-,", "ctrl-shift-w")
-    };
-    cx.bind_keys([
-        KeyBinding::new(open, OpenSettings, None),
-        KeyBinding::new(close, CloseSettings, Some(CONTEXT)),
-    ]);
+/// Answers Open Settings from any window.
+pub fn init(cx: &mut App) {
     cx.on_action(|_: &OpenSettings, cx| open_window(cx));
 }
 
@@ -93,14 +88,16 @@ pub struct SettingsWindow {
     shell: Entity<TextInput>,
     /// Start in's own folder, typed or browsed.
     folder: Entity<TextInput>,
-    /// The shortcut list's search.
+    /// The shortcut list's search, and the command whose key is being recorded.
     search: Entity<TextInput>,
+    recording: Option<shortcuts::Recording>,
+    /// The command whose recorded key the settings refused, and why.
+    key_refused: Option<(String, SharedString)>,
     /// Why the typed shell and folder are not saved.
     refused: Option<SharedString>,
     refused_folder: Option<SharedString>,
-    /// The background picture, typed or browsed, and why it is not saved.
-    image: Entity<TextInput>,
-    refused_image: Option<SharedString>,
+    /// The background picture's fields: its file, scope, size, position and repeat.
+    picture: picture::Fields,
     /// Why the last change did not save.
     failed: Option<SharedString>,
     /// Refusals so far; a field keyed by it drops its draft and shows the settings again.
@@ -120,7 +117,7 @@ pub struct SettingsWindow {
     theme_name: Entity<TextInput>,
     _named: Subscription,
     slot: usize,
-    _typed: [Subscription; 3],
+    _typed: [Subscription; 2],
     _settings: Subscription,
     _updates: Subscription,
     _language: Subscription,
@@ -144,11 +141,6 @@ impl SettingsWindow {
         let cjk_font = cx.new(|cx| TextInput::new(window, cx));
         let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
-        let image = cx.new(|cx| {
-            let mut input = TextInput::new(window, cx);
-            input.set_text(SettingsStore::get(cx).background_image.clone(), cx);
-            input
-        });
         let search = cx.new(|cx| {
             let placeholder = text(cx, "et.settings.search_shortcuts", &[]);
             TextInput::new(window, cx).placeholder(placeholder)
@@ -168,14 +160,8 @@ impl SettingsWindow {
                     this.refused_folder = this.save_typed("start_folder", folder, put, cx);
                 }
             }),
-            cx.subscribe(&image, |this, input, event: &InputEvent, cx| {
-                if let InputEvent::Changed = event {
-                    let image = input.read(cx).text().to_string();
-                    let put = |settings: &mut Settings, image| settings.background_image = image;
-                    this.refused_image = this.save_typed("background_image", image, put, cx);
-                }
-            }),
         ];
+        let picture = picture::Fields::new(window, cx);
         let profiles = terminal::profiles::fields(window, cx);
         // Focus inside, so the window's keys find its context.
         let focus = cx.focus_handle();
@@ -186,10 +172,11 @@ impl SettingsWindow {
             shell,
             folder,
             search,
+            recording: None,
+            key_refused: None,
             refused: None,
             refused_folder: None,
-            image,
-            refused_image: None,
+            picture,
             failed: None,
             drafts: 0,
             font,
@@ -247,7 +234,7 @@ impl SettingsWindow {
         let (input, refused) = match field {
             "shell" => (self.shell.clone(), &mut self.refused),
             "start_folder" => (self.folder.clone(), &mut self.refused_folder),
-            "background_image" => (self.image.clone(), &mut self.refused_image),
+            "background_image" => (self.picture.image.clone(), &mut self.picture.refused_image),
             other => unreachable!("settings: no path field {other}"),
         };
         let Some(text) = path.to_str() else {
@@ -267,7 +254,7 @@ impl SettingsWindow {
         &mut self,
         field: &str,
         value: String,
-        put: fn(&mut Settings, String),
+        put: impl FnOnce(&mut Settings, String),
         cx: &mut Context<Self>,
     ) -> Option<SharedString> {
         let saved = SettingsStore::update(cx, |settings| put(settings, value.clone()));

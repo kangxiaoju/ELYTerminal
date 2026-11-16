@@ -61,6 +61,8 @@ pub fn grid(
             let lines = (bounds.size.height / cell.height).floor() as usize;
             let origin = snapped(bounds.origin, window);
             fit.update(cx, |view, cx| {
+                let moved = view.pointer.hover.is_some()
+                    && (view.pointer.origin != origin || view.pointer.cell != cell);
                 (view.pointer.origin, view.pointer.cell) = (origin, cell);
                 if let Some((row, column)) = at {
                     let corner =
@@ -71,7 +73,7 @@ pub fn grid(
                         view.caret = caret;
                     }
                 }
-                if view.fit(columns, lines, cx) {
+                if view.fit(columns, lines, cx) || moved {
                     cx.notify();
                     window.request_animation_frame();
                 }
@@ -79,9 +81,11 @@ pub fn grid(
         },
         move |bounds, _, window, cx| {
             log::trace!(
-                "terminal: paint {:?}, row 0 {:?}",
+                "terminal: paint {:?}, row 0 {:?}, caret {at:?}, its row's grounds {:?}, cursor {:?}, composing {preedit:?}",
                 bounds,
-                frame.rows.first().map(|row| row.text.trim_end())
+                frame.rows.first().map(|row| row.text.trim_end()),
+                at.map(|(row, _)| grounds(&frame.rows[row])),
+                cursor.as_ref().map(|(_, shape)| shape),
             );
             let focus = input.read(cx).focus.clone();
             window.handle_input(
@@ -231,15 +235,21 @@ fn paint_pictures(
     }
 }
 
+/// The columns of a row that paint a ground, with its color.
+fn grounds(row: &super::frame::Row) -> Vec<(usize, usize, Hsla)> {
+    spans(row)
+        .into_iter()
+        .filter_map(|(column, columns, style)| Some((column, columns, style.bg?)))
+        .collect()
+}
+
 /// A row's grounds, under every row's text.
 fn paint_grounds(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: &mut Window) {
     let cell = look.cell;
-    for (column, columns, style) in spans(row) {
-        if let Some(bg) = style.bg {
-            let corner = top + point(cell.width * column as f32, px(0.));
-            let width = cell.width * columns as f32;
-            window.paint_quad(fill(Bounds::new(corner, size(width, cell.height)), bg));
-        }
+    for (column, columns, bg) in grounds(row) {
+        let corner = top + point(cell.width * column as f32, px(0.));
+        let width = cell.width * columns as f32;
+        window.paint_quad(fill(Bounds::new(corner, size(width, cell.height)), bg));
     }
 }
 

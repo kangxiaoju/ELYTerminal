@@ -1,10 +1,11 @@
+mod color;
+mod mask;
+mod picture;
 mod profiles;
 mod store;
 pub mod window;
 
 use std::{
-    env,
-    ffi::OsStr,
     ops::RangeInclusive,
     path::{Path, PathBuf},
 };
@@ -14,6 +15,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
+pub use color::color;
+pub use mask::Mask;
+pub use picture::{PictureAxis, PictureLength, PicturePosition, PictureRepeat, PictureSize};
 pub use profiles::{Profile, command_line, words};
 pub use store::{SettingsStore, load, save};
 
@@ -95,6 +99,15 @@ pub enum PanelTab {
     Files,
 }
 
+/// Where the background picture paints: the terminal's column or the window below the title bar.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundScope {
+    #[default]
+    Terminal,
+    Window,
+}
+
 /// Everything the settings window edits. A field the file leaves out takes its default.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -111,6 +124,8 @@ pub struct Settings {
     pub start_folder: String,
     /// What the new-session menu offers before the detected shells.
     pub profiles: Vec<Profile>,
+    /// The keys the user chose, by command; a command left out keeps its own.
+    pub shortcuts: crate::keymap::Shortcuts,
     pub theme: String,
     /// The theme while the system is dark; none keeps `theme`.
     pub dark_theme: Option<String>,
@@ -118,6 +133,34 @@ pub struct Settings {
     pub custom_themes: Vec<themes::CustomTheme>,
     /// A picture under the terminal; empty for none.
     pub background_image: String,
+    /// Where the picture paints: the terminal's column or the window below the title bar.
+    pub background_scope: BackgroundScope,
+    /// How the picture fills its box, as CSS's `background-size`.
+    pub background_size: PictureSize,
+    /// Where the picture sits in its box, as CSS's `background-position`.
+    pub background_position: PicturePosition,
+    /// Whether the picture tiles to fill its box.
+    pub background_repeat: PictureRepeat,
+    /// Whether a gradient paints over the picture.
+    pub background_gradient: bool,
+    /// The gradient's angle in degrees, 0 up and turning clockwise.
+    pub background_gradient_angle: f32,
+    /// The gradient's first color.
+    pub background_gradient_from: String,
+    /// The gradient's last color.
+    pub background_gradient_to: String,
+    /// How opaque the picture is, 0 to 1.
+    pub background_image_opacity: f32,
+    /// Whether a mask fades the picture, as CSS's `mask-image` does.
+    pub background_mask: bool,
+    /// The mask's angle in degrees, 0 up and turning clockwise.
+    pub background_mask_angle: f32,
+    /// The mask's size in the picture's box, as CSS's `mask-size`.
+    pub background_mask_size: PictureSize,
+    /// Where the mask sits in the picture's box, as CSS's `mask-position`.
+    pub background_mask_position: PicturePosition,
+    /// The mask's stops: two to sixteen colors, comma separated.
+    pub background_mask_stops: String,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -145,12 +188,20 @@ pub struct Settings {
     /// Option and Command edit text by word and line, as macOS's text does.
     pub natural_text_editing: bool,
     pub copy_on_select: bool,
+    /// A right press copies a selection, else pastes, as Windows Terminal does.
+    pub right_click_paste: bool,
+    /// A paste a shell would run at once asks first.
+    pub paste_protection: bool,
+    /// Closing a window or quitting asks first while a session runs a program.
+    pub confirm_quit: bool,
     /// Ely peeks over the main window's top edge.
     pub ely: bool,
     /// How far in from the pane's left edge she stands, in points, as a drag left her.
     pub ely_left: f32,
     /// A check for a newer release at start and once a day.
     pub check_updates: bool,
+    /// Whether `elyterminal ctl` may read and type into sessions.
+    pub control: bool,
     pub show_sessions: bool,
     /// A drag moves a session's row in the list.
     pub drag_sessions: bool,
@@ -189,10 +240,25 @@ impl Default for Settings {
             start_in: StartIn::Home,
             start_folder: String::new(),
             profiles: Vec::new(),
+            shortcuts: crate::keymap::Shortcuts::new(),
             theme: themes::default_id().into(),
             dark_theme: None,
             custom_themes: Vec::new(),
             background_image: String::new(),
+            background_scope: BackgroundScope::Terminal,
+            background_size: PictureSize::Cover,
+            background_position: PicturePosition::default(),
+            background_repeat: PictureRepeat::NoRepeat,
+            background_gradient: false,
+            background_gradient_angle: 180.0,
+            background_gradient_from: "#00000000".into(),
+            background_gradient_to: "#00000000".into(),
+            background_image_opacity: 1.0,
+            background_mask: false,
+            background_mask_angle: 90.0,
+            background_mask_size: PictureSize::Cover,
+            background_mask_position: PicturePosition::default(),
+            background_mask_stops: "transparent, black".into(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             cjk_font: String::new(),
@@ -213,9 +279,13 @@ impl Default for Settings {
             option_as_alt: OptionAsAlt::Off,
             natural_text_editing: false,
             copy_on_select: false,
+            right_click_paste: cfg!(windows),
+            paste_protection: true,
+            confirm_quit: true,
             ely: true,
             ely_left: 140.0,
             check_updates: true,
+            control: false,
             show_sessions: true,
             drag_sessions: true,
             session_menu: true,
@@ -235,22 +305,38 @@ pub const INTERFACE_SIZE: RangeInclusive<u8> = 12..=16;
 pub const FONT_SIZE: RangeInclusive<f32> = 6.0..=72.0;
 pub const FONT_WEIGHT: RangeInclusive<f32> = 100.0..=900.0;
 pub const LINE_HEIGHT: RangeInclusive<f32> = 1.0..=2.0;
-pub const OPACITY: RangeInclusive<f32> = 0.3..=1.0;
+pub const OPACITY: RangeInclusive<f32> = 0.0..=1.0;
 pub const PADDING: RangeInclusive<f32> = 0.0..=64.0;
 pub const SCROLLBACK: RangeInclusive<u32> = 0..=100_000;
 pub const COLUMN: RangeInclusive<f32> = 160.0..=960.0;
 pub const WINDOW: RangeInclusive<f32> = 100.0..=16384.0;
 pub const ELY_LEFT: RangeInclusive<f32> = 0.0..=16384.0;
 pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
+pub const GRADIENT_ANGLE: RangeInclusive<f32> = 0.0..=360.0;
 
 impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
     pub fn validate(&self) -> anyhow::Result<()> {
         within("interface_size", self.interface_size, &INTERFACE_SIZE)?;
+        crate::keymap::check(&self.shortcuts)?;
         within("font_size", self.font_size, &FONT_SIZE)?;
         within("font_weight", self.font_weight, &FONT_WEIGHT)?;
         within("line_height", self.line_height, &LINE_HEIGHT)?;
         within("background_opacity", self.background_opacity, &OPACITY)?;
+        let angle = &GRADIENT_ANGLE;
+        within(
+            "background_gradient_angle",
+            self.background_gradient_angle,
+            angle,
+        )?;
+        color(&self.background_gradient_from).context("background_gradient_from")?;
+        color(&self.background_gradient_to).context("background_gradient_to")?;
+        let picture = self.background_image_opacity;
+        within("background_image_opacity", picture, &OPACITY)?;
+        within("background_mask_angle", self.background_mask_angle, angle)?;
+        let stops = &self.background_mask_stops;
+        Mask::new(self.background_mask_angle, stops, (1.0, 1.0))
+            .context("background_mask_stops")?;
         within("padding_x", self.padding_x, &PADDING)?;
         within("padding_y", self.padding_y, &PADDING)?;
         within("scrollback", self.scrollback, &SCROLLBACK)?;
@@ -346,60 +432,6 @@ pub fn start_folder(folder: &str) -> anyhow::Result<PathBuf> {
     Ok(path.to_path_buf())
 }
 
-/// The program `shell` names, as a session starts it: a file at a full path, or the first in `PATH`'s full folders.
-pub fn program_path(shell: &str) -> anyhow::Result<String> {
-    program_path_in(shell, &env::var_os("PATH").unwrap_or_default())
-}
-
-/// The program `shell` names, in `folders` as `PATH` lists them.
-pub fn program_path_in(shell: &str, folders: &impl AsRef<OsStr>) -> anyhow::Result<String> {
-    find(shell, folders.as_ref(), cfg!(windows))
-}
-
-/// `shell`'s program, or the first one named so in `folders`, listed as `PATH` lists them; with `exe`, as on Windows, a name without an extension means name.exe.
-fn find(shell: &str, folders: &OsStr, exe: bool) -> anyhow::Result<String> {
-    let path = Path::new(shell);
-    // A relative path, or a relative folder, would hang on each session's own folder.
-    let found = if path.is_absolute() {
-        program(path).then(|| path.to_path_buf())
-    } else if path.components().count() == 1 {
-        let name = if exe && !shell.contains('.') {
-            format!("{shell}.exe")
-        } else {
-            shell.to_string()
-        };
-        env::split_paths(folders)
-            .filter(|folder| folder.is_absolute())
-            .map(|folder| folder.join(&name))
-            .find(|file| program(file))
-    } else {
-        None
-    };
-    let found = found.with_context(|| format!("shell is {shell:?}, which names no program"))?;
-    let text = found.to_str().with_context(|| {
-        format!(
-            "shell is {shell:?}, found at {}, which is not UTF-8",
-            found.display()
-        )
-    })?;
-    Ok(text.to_string())
-}
-
-/// Whether `path` is a file the running user may run, as the system answers, ACLs too.
-#[cfg(unix)]
-fn program(path: &Path) -> bool {
-    use std::{ffi::CString, os::unix::ffi::OsStrExt};
-    let Ok(name) = CString::new(path.as_os_str().as_bytes()) else {
-        return false;
-    };
-    path.is_file() && unsafe { libc::access(name.as_ptr(), libc::X_OK) } == 0
-}
-
-#[cfg(not(unix))]
-fn program(path: &Path) -> bool {
-    path.is_file()
-}
-
 fn within<T: PartialOrd + std::fmt::Display>(
     field: &str,
     value: T,
@@ -413,6 +445,12 @@ fn within<T: PartialOrd + std::fmt::Display>(
     );
     Ok(())
 }
+
+mod program;
+
+#[cfg(test)]
+use program::{find, program};
+pub use program::{program_path, program_path_in};
 
 #[cfg(test)]
 mod tests;

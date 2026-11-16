@@ -11,11 +11,12 @@ use gpui::{
 #[cfg(target_os = "macos")]
 use crate::term::mac;
 use crate::{
-    blur, i18n, menus,
+    blur, i18n, keymap, menus,
+    sessions::Program,
     settings::{self, Place, SettingsStore},
-    term::{ICONS, Launch, MONO, config, input, shell::ShellIntegration, spawn},
+    term::{ICONS, Launch, MONO, config, shell::ShellIntegration, spawn},
     themes, updates,
-    workspace::{self, TITLE, Workspace},
+    workspace::{TITLE, Workspace},
 };
 
 pub mod args;
@@ -52,10 +53,10 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     crate::interface::init(cx);
     updates::start(cx);
     ShellIntegration::init(cx)?;
-    input::bind_keys(cx);
-    workspace::bind_keys(cx);
-    settings::window::bind_keys(cx);
+    settings::window::init(cx);
     menus::init(cx);
+    keymap::init(cx);
+    crate::control::start(cx);
     cx.set_app_identity(APP_ID, TITLE);
     // A press on a notification goes to the window whose session posted it, or to a newer release's page.
     cx.on_system_notification_response(|response, cx| {
@@ -102,6 +103,7 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
             theme,
             settings.custom_themes.clone(),
             settings.background_opacity,
+            !settings.background_image.is_empty(),
         )
     };
     let mut image = SettingsStore::get(cx).background_image.clone();
@@ -128,8 +130,45 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Opens the main window running `launch`.
-pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspace>> {
+/// Opens the main window running `launch`, started for `program`.
+pub fn open(
+    launch: Launch,
+    program: Program,
+    cx: &mut App,
+) -> anyhow::Result<WindowHandle<Workspace>> {
+    let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(SettingsStore::get(cx)))?;
+    open_started((pty, events, launch), program, cx)
+}
+
+/// A session Windows handed over: a new row in the main window, else the first one.
+#[cfg(windows)]
+pub fn adopt(handoff: crate::defterm::Handoff, cx: &mut App) -> anyhow::Result<()> {
+    let title = handoff.title.clone();
+    let started = crate::term::adopt(handoff, config(SettingsStore::get(cx)))?;
+    let main = cx
+        .windows()
+        .into_iter()
+        .find_map(|window| window.downcast::<Workspace>());
+    log::info!("app: a handed session, titled {title:?}, opens");
+    match main {
+        Some(main) => main.update(cx, |workspace, window, cx| {
+            workspace.adopt(started, window, cx);
+            window.activate_window();
+        })?,
+        None => {
+            open_started(started, Program::default(), cx)?;
+        }
+    }
+    cx.activate(true);
+    Ok(())
+}
+
+/// Opens the main window on a started session.
+fn open_started(
+    (pty, events, launch): (crate::term::Pty, crate::term::Events, Launch),
+    program: Program,
+    cx: &mut App,
+) -> anyhow::Result<WindowHandle<Workspace>> {
     let (bounds, display_id) = opening_bounds(cx);
     let background = blur::appearance(SettingsStore::get(cx));
     let least = px(*settings::WINDOW.start());
@@ -148,7 +187,6 @@ pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspa
         window_background: background,
         ..Default::default()
     };
-    let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(SettingsStore::get(cx)))?;
     // Windows' wheel settings, read where gpui reads its own.
     #[cfg(windows)]
     crate::term::keep_wheel()?;
@@ -159,7 +197,7 @@ pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspa
             .detach();
         cx.new(|cx| {
             keep_bounds(window, cx);
-            Workspace::new(pty, events, launch, window, cx)
+            Workspace::new((pty, events, launch), program, window, cx)
         })
     })?;
     crate::pet::follow(window, cx);
