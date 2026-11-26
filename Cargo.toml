@@ -14,14 +14,14 @@ anyhow = "1"
 base64 = "0.22"
 base64-simd = "0.8"
 dirs = "7"
-ely-gpui-component = { git = "https://github.com/ELY-Open-Source/Ely-GPUI-Components.git", rev = "54d80b58ab78619cac552e7f88fa4f3172e39bcd" }
+ely-gpui-component = { git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "d47c464e0fdfd9e4028698d5dd973ebf42876c40" }
 env_logger = "0.11"
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
 gethostname = "1.1.0"
 getrandom = "0.3"
-gpui = { package = "gpui-pre", version = "=0.3.8", default-features = false }
-gpui_platform = { package = "gpui-pre-platform", version = "=0.3.8", features = ["font-kit", "wayland", "x11"] }
+gpui = { package = "gpui-fast", git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "65bc1fced7a56d91142671c01fea3eaa22cf1024", default-features = false }
+gpui_platform = { package = "gpui-fast-platform", git = "https://github.com/kangxiaoju/Ely-GPUI-Components.git", rev = "65bc1fced7a56d91142671c01fea3eaa22cf1024", features = ["font-kit", "wayland", "x11"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 log = "0.4"
 memchr = "2.8"
@@ -78,9 +78,6 @@ windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO
 alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "a322b1b279168222bcad4b211dcdb04315524bcf" }
 vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "8fa83a9b51cadcad3269e1ef3ab059672d875983" }
 xim-ctext = { path = "vendor/xim-ctext" }
-gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "0b74ab730f360e83b0aa914c25d95a088e24da4f" }
-gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "b3e25d5c00b0e97c5c8f2e3fe0c22da16aa293bb" }
-gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "785b93aef6cf9e71a56dc4212a57315953f0d21a" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }

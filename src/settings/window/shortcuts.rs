@@ -181,7 +181,7 @@ impl SettingsWindow {
         let keys = match stroke.key.as_str() {
             "escape" if bare => return log::info!("settings: {name} keeps its keys"),
             "backspace" | "delete" if bare => Vec::new(),
-            _ => vec![stroke.unparse()],
+            _ => vec![stroke.unparse(crate::keymap::HOST_OS)],
         };
         let saved = SettingsStore::update(cx, |settings| {
             settings.shortcuts.insert(name.clone(), keys.clone());

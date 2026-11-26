@@ -152,6 +152,10 @@ pub fn chosen(settings: &Settings, appearance: WindowAppearance) -> &str {
 
 /// The chosen theme's colors; Omarchy's come from its global, the user's from the settings.
 pub fn active(settings: &Settings, appearance: WindowAppearance, cx: &App) -> TerminalTheme {
+    if cx.has_global::<crate::embedded::Host>() {
+        use ely_gpui_component::theme::ActiveTheme;
+        return ely("host", "Host", cx.theme().colors.clone());
+    }
     let id = chosen(settings, appearance);
     if id == OMARCHY {
         return cx.global::<Omarchy>().0.clone();

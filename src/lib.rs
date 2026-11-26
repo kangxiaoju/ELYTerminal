@@ -1,3 +1,4 @@
+pub mod embedded;
 pub mod app;
 pub mod blur;
 pub mod control;

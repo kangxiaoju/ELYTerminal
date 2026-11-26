@@ -5,8 +5,16 @@ use std::collections::BTreeMap;
 use anyhow::{Context as _, bail, ensure};
 use ely_gpui_component::forms::{Copy, Paste, SelectAll};
 use gpui::{
-    Action, App, DummyKeyboardMapper, Global, KeyBinding, KeyBindingContextPredicate, Keystroke,
+    Action, App, Global, KeyBinding, KeyBindingContextPredicate, Keystroke,
     Modifiers, NoAction,
+};
+
+pub(crate) const HOST_OS: gpui::OperatingSystem = if cfg!(target_os = "macos") {
+    gpui::OperatingSystem::Mac
+} else if cfg!(windows) {
+    gpui::OperatingSystem::Windows
+} else {
+    gpui::OperatingSystem::Linux
 };
 
 use crate::{
@@ -70,7 +78,7 @@ impl Command {
         shortcuts: &Shortcuts,
         commands: &'a [Command],
     ) -> Option<&'a Command> {
-        let stroke = |key: &str| Keystroke::parse(key).ok().map(|stroke| stroke.unparse());
+        let stroke = |key: &str| Keystroke::parse_with_os(key, HOST_OS).ok().map(|stroke| stroke.unparse(HOST_OS));
         let own = stroke(key)?;
         commands.iter().find(|other| {
             other.name != self.name
@@ -387,14 +395,14 @@ pub fn check(shortcuts: &Shortcuts) -> anyhow::Result<()> {
     let mut held: Vec<(String, &Command)> = Vec::new();
     for command in &commands {
         for key in command.keys(shortcuts, &commands) {
-            let stroke = Keystroke::parse(&key)
+            let stroke = Keystroke::parse_with_os(&key, HOST_OS)
                 .with_context(|| format!("shortcuts: {}'s {key:?} is no key", command.name))?;
             // gpui reads any word as a key's name.
             let named = !stroke.key.is_empty()
                 && !stroke.key.contains(char::is_whitespace)
                 && !MODIFIERS.contains(&stroke.key.as_str());
             ensure!(named, "shortcuts: {}'s {key:?} names no key", command.name);
-            let stroke = stroke.unparse();
+            let stroke = stroke.unparse(HOST_OS);
             ensure!(
                 !FOCUS_KEYS.contains(&stroke.as_str()),
                 "shortcuts: {key} moves the focus and goes to the terminal's program, so {} cannot take it",
@@ -476,7 +484,7 @@ pub fn apply(cx: &mut App) {
                 context.clone(),
                 false,
                 None,
-                &DummyKeyboardMapper,
+                cx,
             )
             .expect("the settings checked the key");
             bindings.push(binding);

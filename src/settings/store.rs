@@ -13,7 +13,7 @@ use super::Settings;
 /// The settings in force and the file they live in; the only writer of that file.
 pub struct SettingsStore {
     settings: Settings,
-    path: PathBuf,
+    path: Option<PathBuf>,
 }
 
 impl Global for SettingsStore {}
@@ -26,7 +26,15 @@ impl SettingsStore {
         let settings = load(&path)?;
         fonts(&settings, cx)
             .with_context(|| format!("settings: {} holds a bad value", path.display()))?;
-        cx.set_global(Self { settings, path });
+        cx.set_global(Self { settings, path: Some(path) });
+        Ok(())
+    }
+
+    /// Installs host-owned settings without accessing standalone configuration.
+    pub fn init_embedded(settings: Settings, cx: &mut App) -> anyhow::Result<()> {
+        settings.validate()?;
+        fonts(&settings, cx)?;
+        cx.set_global(Self { settings, path: None });
         Ok(())
     }
 
@@ -57,7 +65,9 @@ impl SettingsStore {
         ) {
             fonts(&next, cx)?;
         }
-        save(&store.path, &next, "settings")?;
+        if let Some(path) = &store.path {
+            save(path, &next, "settings")?;
+        }
         cx.global_mut::<Self>().settings = next;
         Ok(())
     }

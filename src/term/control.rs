@@ -57,7 +57,7 @@ impl TerminalView {
     pub fn keyed(&mut self, keys: &[String], cx: &mut Context<Self>) -> anyhow::Result<()> {
         let mut strokes = Vec::new();
         for key in keys {
-            let stroke = Keystroke::parse(key).map_err(|_| anyhow::anyhow!("{key} is no key"))?;
+            let stroke = Keystroke::parse_with_os(key, crate::keymap::HOST_OS).map_err(|_| anyhow::anyhow!("{key} is no key"))?;
             let bare =
                 !stroke.modifiers.control && !stroke.modifiers.alt && !stroke.modifiers.platform;
             anyhow::ensure!(
