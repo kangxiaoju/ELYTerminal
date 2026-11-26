@@ -1,9 +1,9 @@
 //! The card that adds a theme, and the worn custom theme's editor.
+use crate::i18n::text;
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant},
     forms::{ColorPicker, ColorSwatch, Input, InputEvent, TextInput},
-    i18n::text,
     primitives::{Icon, IconName},
     settings::SettingsRow,
     theme::{ActiveTheme, ControlSize, Radius},

@@ -16,8 +16,8 @@ Chapters run in build order. `TASKS.md` follows them line by line.
 ## 2. Foundation
 
 - One binary crate, `elyterminal`, edition 2024, Rust 1.95.
-- Ely from github.com/ELY-Open-Source by pinned rev. gpui, gpui_platform from crates.io `gpui-pre` at the exact version Ely pins.
-- `alacritty_terminal` 0.26 for the grid, the parser and the pseudo-terminal, as Ely uses it, taken from the org's fork, and `vte` 0.15 from the org's fork, for what the terminal adds below: kitty graphics at the cursor, mode 5522, idle history packed small, printable text in runs. gpui's platform crates for macOS, Windows and Linux come from the org's forks where a fix or a whole clipboard needs them.
+- Ely from `kangxiaoju/Ely-GPUI-Components`, pinned to `cd2911a4bddfac9397c38c5336e4335cf68c9a89`. `gpui` and `gpui_platform` use its `gpui-fast` packages at `65bc1fced7a56d91142671c01fea3eaa22cf1024`, including Linux/macOS/Windows platform crates, for the Wayland runtime fix. Upstream's iOS-only `gpui-pre-ios` dependency remains in the lockfile; this app does not support iOS.
+- `alacritty_terminal` 0.26 for the grid, the parser and the pseudo-terminal, as Ely uses it, taken from the org's fork, and `vte` 0.15 from the org's fork, for what the terminal adds below: kitty graphics at the cursor, mode 5522, idle history packed small, printable text in runs.
 - Logs through `log` to stderr, `RUST_LOG` sets the level. No log setting in the app.
 - CI on GitHub Actions: macOS builds, tests and lints; Ubuntu and Windows build and test.
 - Repo `ELY-Open-Source/ELYTerminal` on GitHub, public; it lived on git.zacharyzhang.com until v0.1.7. No credential in any file or commit.

@@ -1,7 +1,7 @@
+use crate::i18n::text;
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant},
     forms::FontPicker,
-    i18n::text,
     settings::SettingsRow,
     theme::{ActiveTheme, ControlSize},
 };

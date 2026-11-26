@@ -9,6 +9,7 @@ use super::{
     view::{TerminalEvent, TerminalView},
 };
 use crate::{
+    i18n::words,
     sessions::{line, plain},
     workspace::TITLE,
 };
@@ -128,6 +129,7 @@ impl TerminalView {
 
     /// Notes the state its row shows; a change goes to the owner, and one to waiting, done or error posts.
     pub(super) fn restate(&mut self, cx: &mut Context<Self>) {
+        cx.emit(TerminalEvent::RecordsChanged);
         if self.records.restate() {
             let state = self.records.shows();
             log::info!("terminal {}: its row shows {state:?}", self.pty.pid);
@@ -146,9 +148,12 @@ impl TerminalView {
 
     /// Posts the state its row shows when it turned to waiting, done or error.
     fn tell_state(&mut self, cx: &mut Context<Self>) {
+        if !self.lifecycle_notifications {
+            return;
+        }
         let body = match self.records.shown() {
             Some((id, record)) if tells(record.state) => {
-                line(&self.records, id, record, cx.global::<I18n>())
+                line(&self.records, id, record, words(cx))
             }
             _ => return,
         };
@@ -166,8 +171,8 @@ impl TerminalView {
         // Only a command C started posts its end, so a prompt bash 3.2 draws again posts nothing.
         if let Some(start) = std::mem::take(&mut self.ran) {
             let now = Instant::now();
-            if ran_long(start, now) {
-                self.post(finished(status, cx.global::<I18n>()), None, cx);
+            if self.lifecycle_notifications && ran_long(start, now) {
+                self.post(finished(status, words(cx)), None, cx);
             } else {
                 log::debug!(
                     "terminal {}: a command under {RAN_FOR:?} ran, so its end, {status:?}, posts nothing",
@@ -184,6 +189,9 @@ impl TerminalView {
 
     /// Posts `body` while the window is not active or the session hidden, one every 3 seconds at most.
     fn post(&mut self, body: String, asked: Option<&Notice>, cx: &mut Context<Self>) {
+        if !self.system_notifications {
+            return;
+        }
         let pid = self.pty.pid;
         if !unseen(self.front, self.active) {
             log::debug!("terminal {pid}: in view, so it posts no {body:?}");

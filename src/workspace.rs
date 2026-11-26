@@ -1,8 +1,8 @@
+use crate::i18n::text;
 use std::time::Instant;
 
 use ely_gpui_component::{
     buttons::{ButtonVariant, IconButton},
-    i18n::text,
     primitives::{FocusScope, IconName},
     shell::{ColumnShell, ResizeBorder, ShellColumn},
     theme::{ActiveTheme, ControlSize},

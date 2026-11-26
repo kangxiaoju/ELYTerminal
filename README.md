@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/ELY-Open-Source/ELYTerminal?style=flat-square&color=24292f)](https://github.com/ELY-Open-Source/ELYTerminal/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.95-dea584?style=flat-square)](https://www.rust-lang.org)
-[![GPUI](https://img.shields.io/badge/GPUI-0.3-5b4cff?style=flat-square)](https://crates.io/crates/gpui-pre)
+[![GPUI Fast](https://img.shields.io/badge/GPUI_Fast-0.1.14-5b4cff?style=flat-square)](https://github.com/longbridge/gpui-fast)
 [![Ely](https://img.shields.io/badge/Ely-components-6d28d9?style=flat-square)](https://github.com/ELY-Open-Source/Ely-GPUI-Components)
 [![alacritty](https://img.shields.io/badge/alacritty-0.26-f46d01?style=flat-square)](https://github.com/alacritty/alacritty)
 
@@ -60,6 +60,66 @@ cargo run --release
 ```
 
 Release scripts, Linux libraries and the log are in [docs/en_us/develop.md](docs/en_us/develop.md).
+
+This branch uses GPUI Fast directly, without GPUI Kit. Embedded hosts must resolve
+the same fixed Fast source as Ely and the terminal; enabling Fast only in the host
+does not migrate its dependencies. Native platform defaults are disabled, with
+`font-kit`, `wayland` and `x11` selected explicitly. The existing PTY, parser,
+host-owned settings and visibility APIs are unchanged.
+Ely components are pinned to `ebdedc0a4f250cdbd58d3fbf7f762981c8650bf6`, shared
+with embedded hosts for controlled mind-map branch folding, multi-node graph
+search highlights and activation/read-only APIs; the Fast runtime pin is unchanged.
+
+GPUI Fast 0.1.14's upstream Apple renderer requires macOS 12 and SDK 26; existing
+release downloads above describe their own older build, not verification of this
+migration branch. macOS and Windows native validation must be recorded separately.
+
+Embedded hosts own the `TerminalView` entity and close a session by releasing it.
+The native input handler keeps only a weak entity reference: deferred platform
+window teardown must not keep the terminal or its PTY alive after host shutdown.
+
+Terminal messages (including status notifications, command completion and clipboard
+prompts) use the terminal's own English and Simplified Chinese catalogs. Embedded
+hosts keep their existing Ely `I18n` global and custom messages: every terminal
+lookup reads its current locale (`en-US` or `zh-CN`), so host locale changes apply
+immediately without replacing the host catalog or installing standalone settings
+observers. Hosts must initialize their `I18n` before rendering terminal UI.
+
+On Windows, embedded initialization also reads the system wheel settings before
+terminal input is handled. These settings are shared process-wide: repeated
+embedded initialization or later standalone window creation reuses them, while
+an initial Windows settings-query failure is returned to the caller.
+
+This fork integrates upstream 0.2.2 at `ba664ef6ef0cdfcb35dc6b65d538cc58e7ecd313`
+while retaining host-owned initialization, theme and settings, weak input ownership,
+PTY foreground probes and `RecordsChanged` events. Its new profile, Files panel and
+appearance controls use the same host-locale terminal catalogs as existing controls.
+Embedded hosts can continue running an external PTY bridge through `term::spawn`
+and observing agent records through `TerminalView::records` without starting the
+standalone application's services. Hosts that patch Ely must provide the upstream
+`TreeDrag` and `SegmentedControl::on_context` APIs and resolve one Ely instance.
+
+Hosts can call `TerminalView::set_notification_policy(lifecycle, system)` before
+events arrive. Disabling lifecycle notices delegates status/command completion to
+the host while retaining custom OSC notifications; disabling system notices
+honors a host's system preference. Status records and protocol queries always
+remain active. `set_front(false, window)` cancels pending graphics animation and
+cursor blinking without stopping terminal output or the child process.
+
+Hosts that run the PTY bridge themselves can wait for the grid to catch up with a count of raw
+output bytes: `TerminalView::set_output_barrier(bytes, cx)` emits
+`TerminalEvent::OutputBarrier(bytes)` once the parser has taken the PTY's first `bytes` bytes (at
+once if it already has; one target at a time). The count is the tap's read count committed at the
+parser's wakeup, not bytes merely read, so nothing is injected into the stream and nothing is held
+back. Inside a synchronized update (`?2026`) the grid shows the last complete screen. Nothing is
+emitted unless the host calls it. `Pty::output_processed` and `PtyEvent::OutputProcessed` expose the
+same count.
+
+`TerminalView::set_resize_settle(Some(quiet))` is an opt-in for hosts whose programs redraw their
+whole history after a resize. After the grid is resized the view keeps drawing the last whole screen
+until output has rested for `quiet`, at least 500 ms have passed and at most 1 s after the latest
+size; a key, mouse press or wheel turn ends it at once. Parsing, the PTY and the program are not
+held back, and `None` (the default) holds no frame and starts no timer.
 
 ## License
 

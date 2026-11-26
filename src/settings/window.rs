@@ -1,10 +1,11 @@
+use crate::i18n::text;
 use std::{fmt::Debug, path::PathBuf};
 
 use ely_gpui_component::{
     buttons::SegmentedControl,
     feedback::InlineMessage,
     forms::{InputEvent, Switch, TextInput},
-    i18n::{I18n, text},
+    i18n::I18n,
     lists::{ListItem, SelectableList},
     primitives::{FocusScope, Icon, IconName, Severity},
     shell::{ColumnShell, ResizeBorder, ShellColumn},

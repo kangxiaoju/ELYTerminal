@@ -356,7 +356,7 @@ impl Chunks {
             dry: 0,
             sink: io::sink(),
         };
-        Tapped::new(pty, sender, 1)
+        Tapped::new(pty, sender, 1, Default::default())
     }
 }
 

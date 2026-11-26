@@ -6,12 +6,13 @@ use std::{
 use ely_gpui_component::{
     forms::TextInput,
     git::{ChangeAction, ChangeSection, Commit, DiffLayout, Stretch},
-    i18n::{I18n, text},
+    i18n::I18n,
 };
 use gpui::{AppContext, Context, Entity, EventEmitter, SharedString, Subscription, Task, Window};
 
 use self::view::{is_folder, shown};
 use super::{Change, Repo};
+use crate::i18n::text;
 
 mod view;
 

@@ -1,9 +1,9 @@
 //! What the new-session menu offers: the user's profiles, then the shells this system holds, as Windows Terminal's dynamic profiles.
 
+use crate::i18n::text;
 use std::path::PathBuf;
 
 use ely_gpui_component::{
-    i18n::text,
     menus::{Menu, MenuItem, OverflowMenu},
     primitives::IconName,
 };

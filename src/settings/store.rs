@@ -38,6 +38,7 @@ impl SettingsStore {
         Ok(())
     }
 
+
     pub fn get(cx: &App) -> &Settings {
         &cx.global::<Self>().settings
     }

@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::Context as _;
-use ely_gpui_component::i18n::text;
+use crate::i18n::text;
 use gpui::{App, Global, SystemNotification};
 use serde::Deserialize;
 

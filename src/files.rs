@@ -177,20 +177,6 @@ impl Files {
             .collect()
     }
 
-    /// The tree opened or closed `folder`; opened, it reads.
-    fn toggle(&mut self, folder: PathBuf, open: bool, cx: &mut Context<Self>) {
-        log::debug!(
-            "files: {} {}",
-            folder.display(),
-            if open { "opened" } else { "closed" }
-        );
-        if open {
-            self.open.insert(folder);
-            self.read(cx);
-        } else {
-            self.open.remove(&folder);
-        }
-    }
 
     /// Shows `folder`, on `remote`'s host when given, read afresh with its marks; a new folder starts a new tree.
     pub fn show(&mut self, folder: &Path, remote: Option<Arc<Remote>>, cx: &mut Context<Self>) {
@@ -436,7 +422,6 @@ impl Render for Files {
             _ => sessions::shown(&self.root, home.as_deref()),
         };
         let (load, open, asked) = (cx.entity(), cx.entity(), cx.entity());
-        let toggled = cx.entity();
         let tree = Tree::new(
             ("files", self.generation),
             [self.folder(&self.root, label, false)],
@@ -446,12 +431,6 @@ impl Render for Files {
             load.update(cx, |files, cx| match files.path(key) {
                 Some(folder) => files.load(folder, cx),
                 None => log::warn!("files: {key} to read is gone"),
-            })
-        })
-        .on_toggle(move |key, open, cx| {
-            toggled.update(cx, |files, cx| match files.path(key) {
-                Some(folder) => files.toggle(folder, open, cx),
-                None => log::warn!("files: {key} to open or close is gone"),
             })
         })
         .on_activate(move |key, _, cx| match open.read(cx).path(key) {

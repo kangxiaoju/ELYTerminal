@@ -1,10 +1,10 @@
+use crate::i18n::text;
 use std::path::PathBuf;
 
 use ely_gpui_component::{
     buttons::{Button, SegmentedControl},
     feedback::InlineMessage,
     forms::{NumberInput, PathInput, Switch},
-    i18n::text,
     primitives::Severity,
     settings::{SettingsRow, SettingsSection},
     theme::{ActiveTheme, ControlSize},
@@ -316,3 +316,4 @@ fn start_in(this: &Entity<SettingsWindow>, value: &SharedString, cx: &mut App) {
         |settings| settings.start_in = start,
     );
 }
+

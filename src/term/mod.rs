@@ -1,3 +1,5 @@
+mod barrier;
+mod settle;
 mod boxes;
 mod busy;
 mod clear;
@@ -47,6 +49,8 @@ pub use fonts::{ICONS, MONO, load_font};
 #[cfg(all(windows, test))]
 pub(crate) use pty::beside_test;
 pub use pty::{Events, Launch, Listener, Pty, PtyEvent, config, fit, spawn};
+#[cfg(unix)]
+pub use pty::ForegroundProbe;
 #[cfg(windows)]
 pub use pty::{Raw, adopt};
 pub use status::{Kind, Record, Records, State};

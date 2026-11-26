@@ -8,7 +8,7 @@ use alacritty_terminal::{
 };
 use gpui::{
     App, Context, DispatchPhase, Entity, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Pixels, Point, ScrollDelta, ScrollWheelEvent, Size, Task, Window,
+    MouseUpEvent, Pixels, Point, ScrollDelta, ScrollEvent, Size, Task, Window,
 };
 
 use super::{
@@ -175,6 +175,7 @@ impl TerminalView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.unsettle(cx);
         window.focus(&self.focus, cx);
         let (cell, point, side) = self.cell_at(event.position);
         let opens = if cfg!(target_os = "macos") {
@@ -395,7 +396,7 @@ impl TerminalView {
 
     pub(super) fn wheel(
         &mut self,
-        event: &ScrollWheelEvent,
+        event: &ScrollEvent,
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -403,6 +404,7 @@ impl TerminalView {
         if height <= Pixels::ZERO {
             return;
         }
+        self.unsettle(cx);
         cx.stop_propagation();
         let held = &event.modifiers;
         if held.control && !held.shift && !held.alt && !held.platform {

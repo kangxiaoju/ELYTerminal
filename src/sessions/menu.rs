@@ -1,5 +1,5 @@
+use crate::i18n::text;
 use ely_gpui_component::{
-    i18n::text,
     menus::{Menu, MenuItem},
     primitives::IconName,
 };

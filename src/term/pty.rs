@@ -26,6 +26,7 @@ use super::{
     status::{Holder, Status},
     tap::Tapped,
 };
+use super::barrier::Progress;
 use crate::settings::{CursorStyle, Settings};
 
 /// What a session hears from its pty.
@@ -50,6 +51,9 @@ pub enum PtyEvent {
     /// win32-input-mode set or reset.
     #[cfg(windows)]
     Win32(bool),
+    /// The parser took the pty's output through this many raw bytes: told after each wakeup, once a
+    /// host asked with `Pty::listen_output`. A synchronized update's bytes count; the grid then holds the last complete screen.
+    OutputProcessed(u64),
 }
 
 /// Hands the grid's events to the session; `pid` names the program in logs.
@@ -57,6 +61,7 @@ pub enum PtyEvent {
 pub struct Listener {
     sender: UnboundedSender<PtyEvent>,
     pid: u32,
+    progress: Arc<Progress>,
 }
 
 impl EventListener for Listener {
@@ -64,8 +69,13 @@ impl EventListener for Listener {
         if let Event::ChildExit(status) = &event {
             log::info!("pty {}: the program ended, {status}", self.pid);
         }
+        let woke = matches!(event, Event::Wakeup);
         if self.sender.unbounded_send(PtyEvent::Term(event)).is_err() {
             log::debug!("pty {}: an event after its session closed", self.pid);
+        }
+        // The wakeup follows a turn's last `advance`: what the tap read is now parsed.
+        if woke && let Some(bytes) = self.progress.woke() {
+            let _ = self.sender.unbounded_send(PtyEvent::OutputProcessed(bytes));
         }
     }
 }
@@ -90,6 +100,7 @@ pub struct Pty {
     pub quote: Quote,
     /// Its kitty graphics: the parser writes them, the view draws.
     pub graphics: Arc<Mutex<Shared>>,
+    progress: Arc<Progress>,
     notifier: Notifier,
     #[cfg(unix)]
     master: std::fs::File,
@@ -245,9 +256,11 @@ fn run(
         .master()
         .map_err(|error| anyhow::anyhow!("pty {pid}: no copy of the master: {error}"))?;
     let (sender, events) = unbounded();
+    let progress = Arc::new(Progress::default());
     let listener = Listener {
         sender: sender.clone(),
         pid,
+        progress: progress.clone(),
     };
     let grid = TermSize::new(size.num_cols.into(), size.num_lines.into());
     let mut term = Term::new(config, &grid, listener.clone());
@@ -255,7 +268,7 @@ fn run(
     let shared = graphics.shared();
     term.set_graphics(Box::new(graphics));
     let term = Arc::new(FairMutex::new(term));
-    let tapped = Tapped::new(raw, sender, pid);
+    let tapped = Tapped::new(raw, sender, pid, progress.clone());
     #[cfg(unix)]
     let tapped = tapped.holding(master.try_clone().map_err(|error| {
         anyhow::anyhow!("pty {pid}: no copy of the master for the tap: {error}")
@@ -269,6 +282,7 @@ fn run(
             pid,
             quote,
             graphics: shared,
+            progress,
             notifier,
             #[cfg(unix)]
             master,
@@ -381,6 +395,21 @@ impl Pty {
         self.notifier.notify(bytes);
     }
 
+    /// Raw output bytes the parser has taken, as of the last wakeup.
+    pub fn output_processed(&self) -> u64 {
+        self.progress.done()
+    }
+
+    /// Asks for `PtyEvent::OutputProcessed` after each wakeup; returns `output_processed` at the call.
+    pub fn listen_output(&self) -> u64 {
+        self.progress.listen()
+    }
+
+    /// Ends `listen_output`'s events.
+    pub fn stop_listening_output(&self) {
+        self.progress.stop_listening();
+    }
+
     /// Fits the grid and tells the program its new size; both get the same counts.
     pub fn resize(&mut self, (columns, lines): (usize, usize), cell: (u16, u16)) {
         let size = fit(columns, lines, cell);
@@ -395,11 +424,32 @@ impl Pty {
     }
 }
 
+/// A cloned master for off-thread foreground process inspection.
+#[cfg(unix)]
+pub struct ForegroundProbe(std::fs::File);
+
+#[cfg(unix)]
+impl ForegroundProbe {
+    /// Only the foreground group's leader, never a process-table scan.
+    pub fn command(&self) -> std::io::Result<Option<(i32, Vec<String>)>> {
+        let Some(group) = super::unix::foreground(&self.0)? else {
+            return Ok(None);
+        };
+        let args = super::unix::args(group)?;
+        Ok(Some((group, args)))
+    }
+}
+
 #[cfg(unix)]
 impl Pty {
     /// The foreground process group; none once none holds the terminal.
     pub fn foreground(&self) -> std::io::Result<Option<i32>> {
         super::unix::foreground(&self.master)
+    }
+
+    /// Clones the master without reading process metadata.
+    pub fn foreground_probe(&self) -> std::io::Result<ForegroundProbe> {
+        self.master.try_clone().map(ForegroundProbe)
     }
 }
 

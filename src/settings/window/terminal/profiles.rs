@@ -1,12 +1,12 @@
 //! Settings › Terminal's profiles: each a name, a command line and a folder, as Windows Terminal's.
 
+use crate::i18n::text;
 use std::path::PathBuf;
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant},
     feedback::InlineMessage,
     forms::{Input, InputEvent, PathInput, TextInput},
-    i18n::text,
     primitives::{IconName, Severity},
     settings::{SettingsRow, SettingsSection},
     theme::{ActiveTheme, ControlSize},

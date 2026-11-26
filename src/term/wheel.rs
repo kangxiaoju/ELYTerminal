@@ -1,6 +1,6 @@
 //! Local lines or mouse reports, from gpui's units per system.
 
-use gpui::{Pixels, ScrollDelta, ScrollWheelEvent};
+use gpui::{Pixels, ScrollDelta, ScrollEvent};
 
 /// Lines per gpui line: macOS's notch scrolls 3, as Ghostty's.
 const NOTCH: f32 = if cfg!(target_os = "macos") { 3. } else { 1. };
@@ -10,7 +10,7 @@ const PAGE: f32 = u32::MAX as f32;
 /// Whole local lines or Windows reporting notches; `rest` keeps parts.
 pub fn lines(
     rest: &mut f32,
-    event: &ScrollWheelEvent,
+    event: &ScrollEvent,
     height: Pixels,
     rows: usize,
     reporting: bool,
@@ -47,7 +47,7 @@ pub fn lines(
 /// Whole notches, a trackpad's lines among them, for the font's size; `rest` keeps parts.
 pub fn notches(
     rest: &mut f32,
-    event: &ScrollWheelEvent,
+    event: &ScrollEvent,
     height: Pixels,
     settings: impl FnOnce() -> Option<(f32, f32)>,
 ) -> Option<i32> {
@@ -73,7 +73,7 @@ const LINUX: f32 = 3.;
 const ZOOM: f32 = 10.;
 
 /// `travel` added to `rest`, within `most`; the whole part taken out.
-fn whole(rest: &mut f32, travel: f32, most: f32, event: &ScrollWheelEvent) -> Option<i32> {
+fn whole(rest: &mut f32, travel: f32, most: f32, event: &ScrollEvent) -> Option<i32> {
     if travel.is_nan() {
         log::error!("wheel: {:?} moves no number of lines", event.delta);
         return None;
@@ -92,12 +92,15 @@ fn whole(rest: &mut f32, travel: f32, most: f32, event: &ScrollWheelEvent) -> Op
 #[cfg(windows)]
 static KEPT: std::sync::OnceLock<(f32, f32)> = std::sync::OnceLock::new();
 
-/// Reads Windows' wheel settings as the main window opens.
+/// Reads Windows' wheel settings once for standalone and embedded terminals.
 #[cfg(windows)]
 pub fn keep() -> anyhow::Result<()> {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         SPI_GETWHEELSCROLLCHARS, SPI_GETWHEELSCROLLLINES, SystemParametersInfoW,
     };
+    if KEPT.get().is_some() {
+        return Ok(());
+    }
     let setting = |action, name| {
         let mut value = 0u32;
         let read = unsafe { SystemParametersInfoW(action, 0, (&raw mut value).cast(), 0) } != 0;
@@ -108,10 +111,9 @@ pub fn keep() -> anyhow::Result<()> {
         setting(SPI_GETWHEELSCROLLLINES, "lines a notch")?,
         setting(SPI_GETWHEELSCROLLCHARS, "characters a sideways notch")?,
     );
-    anyhow::ensure!(
-        KEPT.set(kept).is_ok(),
-        "wheel: a second window keeps Windows' settings"
-    );
+    if KEPT.set(kept).is_err() {
+        return Ok(());
+    }
     log::info!(
         "wheel: Windows sets {} lines a notch and {} characters a sideways one",
         kept.0,
@@ -142,15 +144,24 @@ mod tests {
 
     use super::*;
 
-    fn wheel(delta: ScrollDelta, shift: bool) -> ScrollWheelEvent {
+    #[cfg(windows)]
+    #[test]
+    fn keeping_windows_settings_twice_preserves_scroll_settings() {
+        keep().expect("read Windows' wheel settings");
+        let first = settings().expect("Windows' wheel settings were kept");
+        keep().expect("reuse Windows' wheel settings");
+        assert_eq!(settings(), Some(first));
+    }
+
+    fn wheel(delta: ScrollDelta, shift: bool) -> ScrollEvent {
         let modifiers = Modifiers {
             shift,
             ..Modifiers::default()
         };
-        ScrollWheelEvent {
+        ScrollEvent {
             delta,
             modifiers,
-            ..ScrollWheelEvent::default()
+            ..ScrollEvent::default()
         }
     }
 

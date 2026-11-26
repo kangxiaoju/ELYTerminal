@@ -1,3 +1,4 @@
+use crate::i18n::text;
 mod cards;
 mod cursor;
 mod custom;
@@ -9,7 +10,6 @@ use std::ops::RangeInclusive;
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant, IconButton},
     forms::{FontPicker, NumberInput, Slider, Switch, TextInput},
-    i18n::text,
     primitives::IconName,
     settings::{SettingsRow, SettingsSection},
     theme::{ActiveTheme, ControlSize, TextSize},

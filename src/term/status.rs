@@ -206,6 +206,8 @@ pub struct Records {
     clock: u64,
     /// A program has reported through OSC 7501 since the last full reset, so OSC 9;4 maps no more.
     reported: bool,
+    /// Distinguishes explicit root reports from generic OSC 9;4 progress.
+    root_explicit: bool,
     /// The state a row showed at the last note.
     shows: Option<State>,
     /// Commands open between C and D, for an unknown holder.
@@ -215,6 +217,9 @@ pub struct Records {
 impl Records {
     /// `owner`'s report replaces the record at `id` whole.
     pub fn report(&mut self, id: String, record: Record, owner: Option<i32>) {
+        if id.is_empty() {
+            self.root_explicit = true;
+        }
         self.reported = true;
         self.put(id, record, owner);
     }
@@ -265,6 +270,7 @@ impl Records {
         self.list.clear();
         self.reported = false;
         self.commands = 0;
+        self.root_explicit = false;
     }
 
     fn put(&mut self, id: String, record: Record, owner: Option<i32>) {
@@ -371,6 +377,11 @@ impl Records {
         self.list
             .iter()
             .map(|(id, record, ..)| (id.as_str(), record))
+    }
+
+    /// Whether this record came from an explicit status report.
+    pub fn is_explicit(&self, id: &str) -> bool {
+        !id.is_empty() || self.root_explicit
     }
 
     /// The app of the record at `id`: its own, else its nearest ancestor's, the root's last; herdr's agents have none.

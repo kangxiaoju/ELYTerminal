@@ -1,6 +1,6 @@
+use crate::i18n::text;
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant, SegmentedControl},
-    i18n::text,
     layout::Collapsible,
     primitives::IconName,
     theme::ControlSize,

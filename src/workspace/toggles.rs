@@ -1,6 +1,6 @@
+use crate::i18n::text;
 use ely_gpui_component::{
     buttons::{ButtonVariant, IconButton},
-    i18n::text,
     primitives::IconName,
     theme::ControlSize,
 };

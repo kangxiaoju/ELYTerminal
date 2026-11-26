@@ -1,10 +1,10 @@
 use ely_gpui_component::{
     forms::{Copy, Paste, SelectAll},
-    i18n::text,
 };
 use gpui::{App, InteractiveElement, Menu, MenuItem, OsAction, actions};
 
 use crate::{
+    i18n::text,
     settings::window::OpenSettings,
     term::{
         input::{Clear, Find},
